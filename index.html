@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>غرفة القارئ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #120c08;
+    --ink: #2b1d10;
+    --paper: #f4ead2;
+    --paper-edge: #e3d3ad;
+    --gold: #e3c27a;
+    --ui: #f3e6cc;
+    --ui-dim: rgba(243, 230, 204, .65);
+    --panel: rgba(24, 16, 10, .72);
+    --line: rgba(120, 86, 50, .22);
+    --cover: #6b1d1d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ui); font-family: "Tajawal", system-ui, sans-serif; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  /* ---------- شاشة التحميل ---------- */
+  #loader { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 50; transition: opacity .8s ease; }
+  #loader.done { opacity: 0; pointer-events: none; }
+  #loader h1 { font-family: "Aref Ruqaa", serif; color: var(--gold); font-size: clamp(32px, 6vw, 56px); margin: 0 0 8px; text-align: center; }
+  #loader p { margin: 0; color: var(--ui-dim); text-align: center; }
+
+  /* ---------- واجهة الغرفة ---------- */
+  #title { position: fixed; top: 16px; right: 16px; font-family: "Aref Ruqaa", serif; font-size: 28px; color: var(--gold); text-shadow: 0 2px 12px rgba(0,0,0,.7); pointer-events: none; z-index: 5; }
+  #hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel); backdrop-filter: blur(6px); padding: 10px 18px; border-radius: 999px; font-size: 14px; color: var(--ui-dim); white-space: nowrap; z-index: 5; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+  #hint b { color: var(--ui); font-weight: 500; }
+  #tooltip { position: fixed; pointer-events: none; z-index: 6; background: var(--panel); backdrop-filter: blur(6px); border: 1px solid rgba(227,194,122,.35); padding: 6px 12px; border-radius: 8px; font-family: "Amiri", serif; font-size: 17px; color: var(--ui); transform: translate(-50%, calc(-100% - 14px)); opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  #tooltip.show { opacity: 1; }
+  #tooltip small { display: block; font-family: "Tajawal", sans-serif; font-size: 12px; color: var(--gold); }
+  body.hovering #scene { cursor: pointer; }
+
+  /* ---------- القارئ (الكتاب المفتوح) ---------- */
+  #reader { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; background: radial-gradient(ellipse at center, rgba(20,12,6,.55), rgba(8,5,3,.88)); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity .35s ease; }
+  #reader.open { opacity: 1; pointer-events: auto; }
+
+  .reader-top { width: min(1100px, 100%); display: flex; align-items: center; gap: 10px; }
+  #bookTitle { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px dashed rgba(227,194,122,.4); color: var(--gold); font-family: "Aref Ruqaa", serif; font-size: clamp(22px, 3.4vw, 32px); padding: 2px 4px; outline: none; text-align: center; }
+  #bookTitle:focus { border-bottom-color: var(--gold); }
+
+  .btn { background: rgba(243,230,204,.08); border: 1px solid rgba(227,194,122,.35); color: var(--ui); border-radius: 10px; padding: 8px 14px; font: 500 15px "Tajawal", sans-serif; cursor: pointer; transition: background .15s, border-color .15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover:not(:disabled) { background: rgba(227,194,122,.18); border-color: var(--gold); }
+  .btn:disabled { opacity: .35; cursor: default; }
+  .btn.icon { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 20px; }
+
+  .book-open { position: relative; width: min(1100px, 100%); height: min(70vh, 720px); background: var(--cover); border-radius: 10px; padding: 14px; display: flex; perspective: 2200px; box-shadow: 0 30px 80px rgba(0,0,0,.65), inset 0 0 0 2px rgba(227,194,122,.35), inset 0 0 40px rgba(0,0,0,.45); }
+  .page { position: relative; flex: 1; background: var(--paper); overflow: hidden; display: flex; flex-direction: column; }
+  .page.p0 { border-radius: 2px 6px 6px 2px; box-shadow: inset 24px 0 30px -18px rgba(80,50,20,.45); } /* الصفحة اليمنى */
+  .page.p1 { border-radius: 6px 2px 2px 6px; box-shadow: inset -24px 0 30px -18px rgba(80,50,20,.45); } /* الصفحة اليسرى */
+  .single .page.p0 { border-radius: 6px; box-shadow: inset 0 0 30px -10px rgba(80,50,20,.35); }
+  .single .page.p1 { display: none; }
+  .page textarea { flex: 1; width: 100%; border: none; resize: none; outline: none; padding: 28px 34px 8px; font-family: "Amiri", serif; font-size: 20px; line-height: 34px; color: var(--ink); direction: rtl;
+    background: repeating-linear-gradient(to bottom, transparent 0 33px, var(--line) 33px 34px); background-attachment: local; background-position: 0 22px; }
+  .page textarea::placeholder { color: rgba(43,29,16,.35); font-style: italic; }
+  .page .num { text-align: center; padding: 4px 0 10px; font-family: "Amiri", serif; color: rgba(43,29,16,.55); font-size: 15px; }
+  .crease { width: 2px; background: linear-gradient(to bottom, rgba(0,0,0,.15), rgba(0,0,0,.35), rgba(0,0,0,.15)); }
+  .single .crease { display: none; }
+
+  /* غلاف يفتح عند فتح الكتاب */
+  .cover { position: absolute; top: 0; bottom: 0; left: 0; width: 50%; transform-origin: right center; background: var(--cover); border-radius: 10px 0 0 10px; display: grid; place-items: center; backface-visibility: hidden; z-index: 4; box-shadow: inset 0 0 0 2px rgba(227,194,122,.35), inset 0 0 0 10px var(--cover), inset 0 0 0 11px rgba(227,194,122,.55); }
+  .cover span { font-family: "Aref Ruqaa", serif; color: var(--gold); font-size: clamp(24px, 3.5vw, 40px); text-align: center; padding: 0 24px; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+  .single .cover { width: 100%; border-radius: 10px; }
+  #reader.open .cover { animation: openCover 1s .15s cubic-bezier(.55,.05,.35,1) forwards; }
+  @keyframes openCover { to { transform: rotateY(-180deg); visibility: hidden; } }
+
+  /* ورقة تقلب */
+  .flipper { position: absolute; top: 14px; bottom: 14px; background: linear-gradient(to left, var(--paper), var(--paper-edge)); z-index: 3; backface-visibility: visible; pointer-events: none; }
+  .flipper.fwd { left: 14px; width: calc(50% - 15px); transform-origin: right center; animation: flipFwd .6s ease-in-out forwards; }
+  .flipper.back { right: 14px; width: calc(50% - 15px); transform-origin: left center; animation: flipBack .6s ease-in-out forwards; }
+  .single .flipper.fwd, .single .flipper.back { width: calc(100% - 28px); }
+  @keyframes flipFwd { 0% { transform: rotateY(0); } 100% { transform: rotateY(-180deg); opacity: .2; } }
+  @keyframes flipBack { 0% { transform: rotateY(0); } 100% { transform: rotateY(180deg); opacity: .2; } }
+
+  .reader-bottom { width: min(1100px, 100%); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .nav { display: flex; align-items: center; gap: 10px; }
+  #pageInfo { color: var(--ui-dim); font-size: 14px; min-width: 120px; text-align: center; }
+  #saveState { color: var(--ui-dim); font-size: 13px; min-width: 90px; }
+  #saveState.ok { color: #9fd49a; }
+
+  @media (max-width: 760px) {
+    #title { font-size: 22px; }
+    #hint { font-size: 12px; }
+    .book-open { height: min(64vh, 640px); padding: 10px; }
+    .page textarea { padding: 20px 20px 6px; font-size: 18px; }
+    .btn { padding: 7px 10px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="loader"><div><h1>غرفة القارئ</h1><p>جارٍ ترتيب الكتب على الرفوف…</p></div></div>
+
+<div id="title">غرفة القارئ</div>
+<div id="hint"><b>اسحب</b> للتجوّل · <b>مرّر</b> للاقتراب · <b>اضغط على أي كتاب</b> لفتحه والكتابة فيه</div>
+<div id="tooltip"></div>
+
+<div id="reader" aria-hidden="true">
+  <div class="reader-top">
+    <button class="btn icon" id="closeBtn" title="إغلاق الكتاب (Esc)">✕</button>
+    <input id="bookTitle" maxlength="40" spellcheck="false" aria-label="عنوان الكتاب">
+    <button class="btn" id="exportBtn" title="تنزيل محتوى الكتاب كملف نصي">⤓ تنزيل</button>
+  </div>
+  <div class="book-open" id="bookOpen">
+    <div class="cover"><span id="coverTitle"></span></div>
+    <div class="page p0"><textarea placeholder="اكتب هنا…"></textarea><div class="num"></div></div>
+    <div class="crease"></div>
+    <div class="page p1"><textarea placeholder="…"></textarea><div class="num"></div></div>
+  </div>
+  <div class="reader-bottom">
+    <span id="saveState"></span>
+    <div class="nav">
+      <button class="btn" id="prevBtn">→ السابق</button>
+      <span id="pageInfo"></span>
+      <button class="btn" id="nextBtn">التالي ←</button>
+    </div>
+    <span style="min-width:90px"></span>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const ROOM = { w: 10, d: 9, h: 4.2 };
+const CASE = { w: 3, h: 3.6, d: 0.5, t: 0.05, levels: 5 };
+const STORAGE_PREFIX = 'bookroom:v1:';
+const MAX_PAGES = 300;
+
+// ---------- أدوات ----------
+function mulberry32(a) {
+  return () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+// مولّد ثابت حتى يبقى ترتيب الكتب (ومعرّفاتها) كما هو بين الزيارات
+const brand = mulberry32(20261019);
+const brr = (a, b) => a + brand() * (b - a);
+const rr = (a, b) => a + Math.random() * (b - a);
+const arNum = n => n.toLocaleString('ar-EG');
+
+const storage = {
+  get(id) { try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + id)); } catch { return null; } },
+  set(id, value) { try { localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(value)); return true; } catch { return false; } },
+};
+
+// ---------- المشهد ----------
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x120c08);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.03, 40);
+camera.position.set(0, 1.75, 3.3);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 1.6, -0.6);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.zoomToCursor = true;
+controls.minDistance = 0.35;
+controls.maxDistance = 4.2;
+controls.minPolarAngle = Math.PI * 0.18;
+controls.maxPolarAngle = Math.PI * 0.82;
+controls.rotateSpeed = 0.55;
+controls.panSpeed = 0.6;
+controls.update();
+
+function canvasTexture(w, h, draw, repeat) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = maxAniso;
+  if (repeat) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(...repeat); }
+  return tex;
+}
+
+// ---------- الخامات ----------
+const floorTex = canvasTexture(1024, 1024, (ctx, w, h) => {
+  const rows = 8, rh = h / rows;
+  for (let r = 0; r < rows; r++) {
+    let x = -Math.random() * w * 0.5;
+    while (x < w) {
+      const len = rr(w * 0.35, w * 0.7);
+      ctx.fillStyle = `hsl(${rr(20, 30)}, ${rr(38, 52)}%, ${rr(20, 30)}%)`;
+      ctx.fillRect(x, r * rh, len, rh);
+      for (let i = 0; i < 16; i++) {
+        const y = r * rh + Math.random() * rh;
+        ctx.strokeStyle = `rgba(0,0,0,${rr(0.05, 0.16)})`;
+        ctx.lineWidth = rr(0.6, 2);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.bezierCurveTo(x + len * 0.3, y + rr(-6, 6), x + len * 0.6, y + rr(-6, 6), x + len, y + rr(-3, 3));
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(0,0,0,.5)';
+      ctx.fillRect(x, r * rh, 3, rh);
+      x += len;
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    ctx.fillRect(0, r * rh, w, 3);
+  }
+}, [3, 3]);
+
+const wallTex = canvasTexture(512, 512, (ctx, w, h) => {
+  ctx.fillStyle = '#26352a';
+  ctx.fillRect(0, 0, w, h);
+  for (let x = 0; x < w; x += 64) {
+    ctx.fillStyle = 'rgba(255,255,255,.025)';
+    ctx.fillRect(x, 0, 32, h);
+  }
+  ctx.strokeStyle = 'rgba(214,180,110,.14)';
+  ctx.lineWidth = 2;
+  for (let y = 0; y < h; y += 128) {
+    for (let x = 0; x < w; x += 128) {
+      for (const [cx, cy] of [[x + 64, y + 64], [x, y], [x + 128, y], [x, y + 128], [x + 128, y + 128]]) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 22); ctx.lineTo(cx + 14, cy); ctx.lineTo(cx, cy + 22); ctx.lineTo(cx - 14, cy); ctx.closePath();
+        ctx.stroke();
+      }
+    }
+  }
+}, [5, 2]);
+
+const caseWoodTex = canvasTexture(256, 512, (ctx, w, h) => {
+  ctx.fillStyle = '#5b3820';
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 70; i++) {
+    const x = Math.random() * w;
+    ctx.strokeStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,220,170'},${rr(0.03, 0.1)})`;
+    ctx.lineWidth = rr(0.5, 2.5);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.bezierCurveTo(x + rr(-12, 12), h * 0.33, x + rr(-12, 12), h * 0.66, x + rr(-6, 6), h);
+    ctx.stroke();
+  }
+});
+
+const rugTex = canvasTexture(1024, 680, (ctx, w, h) => {
+  ctx.fillStyle = '#6a1c1c'; ctx.fillRect(0, 0, w, h);
+  const band = (inset, color, width) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.strokeRect(inset, inset, w - inset * 2, h - inset * 2); };
+  band(20, '#1d2440', 34); band(46, '#c9a052', 6); band(70, '#1d2440', 10); band(90, '#c9a052', 3);
+  ctx.fillStyle = '#c9a052';
+  for (let x = 40; x < w - 20; x += 40) {
+    for (const y of [20, h - 20]) { ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  const diamond = (rx, ry, fill) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(0, -ry); ctx.lineTo(rx, 0); ctx.lineTo(0, ry); ctx.lineTo(-rx, 0); ctx.closePath(); ctx.fill(); };
+  diamond(300, 200, '#1d2440'); diamond(270, 178, '#8a2a24'); diamond(200, 130, '#c9a052'); diamond(180, 116, '#1d2440');
+  diamond(90, 60, '#8a2a24'); diamond(40, 26, '#e7cf94');
+  ctx.restore();
+  ctx.fillStyle = 'rgba(201,160,82,.5)';
+  for (let y = 130; y < h - 120; y += 56) {
+    for (let x = 130; x < w - 120; x += 56) {
+      const dx = (x - w / 2) / 300, dy = (y - h / 2) / 200;
+      if (Math.abs(dx) + Math.abs(dy) > 1.05) { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  const img = ctx.getImageData(0, 0, w, h);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() - 0.5) * 22;
+    img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
+});
+
+const skyTex = canvasTexture(512, 512, (ctx, w, h) => {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#0b1430'); g.addColorStop(0.7, '#1f2f5a'); g.addColorStop(1, '#3b3f63');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < 160; i++) {
+    ctx.fillStyle = `rgba(255,255,240,${rr(0.3, 1)})`;
+    ctx.beginPath(); ctx.arc(Math.random() * w, Math.random() * h * 0.75, rr(0.4, 1.6), 0, Math.PI * 2); ctx.fill();
+  }
+  const moon = ctx.createRadialGradient(360, 130, 10, 360, 130, 90);
+  moon.addColorStop(0, 'rgba(255,250,225,1)'); moon.addColorStop(0.35, 'rgba(255,248,215,.95)'); moon.addColorStop(0.4, 'rgba(255,248,215,.25)'); moon.addColorStop(1, 'rgba(255,248,215,0)');
+  ctx.fillStyle = moon; ctx.beginPath(); ctx.arc(360, 130, 90, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0a0f1f';
+  ctx.beginPath(); ctx.moveTo(0, h);
+  for (let x = 0; x <= w; x += 16) ctx.lineTo(x, h - 70 - Math.sin(x * 0.03) * 20 - Math.random() * 40);
+  ctx.lineTo(w, h); ctx.fill();
+});
+
+const M = {
+  wood: new THREE.MeshStandardMaterial({ map: caseWoodTex, roughness: 0.55, metalness: 0.05 }),
+  darkWood: new THREE.MeshStandardMaterial({ color: 0x2f1d10, roughness: 0.6 }),
+  back: new THREE.MeshStandardMaterial({ color: 0x24160c, roughness: 0.9 }),
+  brass: new THREE.MeshStandardMaterial({ color: 0xc9a052, roughness: 0.3, metalness: 0.9 }),
+  leather: new THREE.MeshStandardMaterial({ color: 0x6e1f1a, roughness: 0.45 }),
+  cushion: new THREE.MeshStandardMaterial({ color: 0x7c2620, roughness: 0.6 }),
+  curtain: new THREE.MeshStandardMaterial({ color: 0x5b1518, roughness: 0.85, side: THREE.DoubleSide }),
+  pages: new THREE.MeshStandardMaterial({ color: 0xefe3c4, roughness: 0.9 }),
+  shade: new THREE.MeshStandardMaterial({ color: 0xf1d29a, emissive: 0xffb45e, emissiveIntensity: 0.9, roughness: 0.8, side: THREE.DoubleSide }),
+  bulb: new THREE.MeshBasicMaterial({ color: 0xffe2a8 }),
+  flame: new THREE.MeshBasicMaterial({ color: 0xffb648 }),
+  wax: new THREE.MeshStandardMaterial({ color: 0xf2e8d0, roughness: 0.6, emissive: 0x3a2008, emissiveIntensity: 0.4 }),
+};
+
+function box(w, h, d, mat, x = 0, y = 0, z = 0, parent = scene, shadow = true) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.castShadow = shadow; m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+function cyl(rt, rb, h, mat, x = 0, y = 0, z = 0, parent = scene, seg = 24) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(x, y, z);
+  m.castShadow = true; m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// ---------- الغرفة ----------
+function buildRoom() {
+  const { w, d, h } = ROOM;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.55 }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: 0x2b1e15, roughness: 0.9 }));
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = h;
+  scene.add(ceiling);
+  for (const z of [-2.6, 0, 2.6]) box(w, 0.22, 0.28, M.darkWood, 0, h - 0.11, z, scene, false);
+
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.9 });
+  const walls = [
+    { pos: [0, h / 2, -d / 2], rot: 0, len: w },
+    { pos: [0, h / 2, d / 2], rot: Math.PI, len: w },
+    { pos: [-w / 2, h / 2, 0], rot: Math.PI / 2, len: d },
+    { pos: [w / 2, h / 2, 0], rot: -Math.PI / 2, len: d },
+  ];
+  for (const wl of walls) {
+    const mat = wallMat.clone();
+    mat.map = wallTex.clone();
+    mat.map.repeat.set(wl.len / 2, h / 2);
+    mat.map.needsUpdate = true;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(wl.len, h), mat);
+    m.position.set(...wl.pos);
+    m.rotation.y = wl.rot;
+    m.receiveShadow = true;
+    scene.add(m);
+    // إطار سفلي وكورنيش علوي
+    const dir = new THREE.Vector3(Math.sin(wl.rot), 0, Math.cos(wl.rot));
+    for (const [hh, y, dd] of [[0.16, 0.08, 0.04], [0.12, h - 0.06, 0.08]]) {
+      const b = box(wl.len, hh, dd, M.darkWood, wl.pos[0] + dir.x * dd / 2, y, wl.pos[2] + dir.z * dd / 2, scene, false);
+      b.rotation.y = wl.rot;
+    }
+  }
+
+  // النافذة على الجدار الخلفي
+  const win = new THREE.Group();
+  win.position.set(0, 2.15, -d / 2 + 0.01);
+  scene.add(win);
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.9), new THREE.MeshBasicMaterial({ map: skyTex }));
+  sky.position.z = 0.005;
+  win.add(sky);
+  box(1.36, 0.08, 0.1, M.darkWood, 0, 0.99, 0.05, win);
+  box(1.36, 0.08, 0.1, M.darkWood, 0, -0.99, 0.05, win);
+  box(0.08, 2.06, 0.1, M.darkWood, -0.64, 0, 0.05, win);
+  box(0.08, 2.06, 0.1, M.darkWood, 0.64, 0, 0.05, win);
+  box(0.04, 1.9, 0.05, M.darkWood, 0, 0, 0.03, win, false);
+  box(1.2, 0.04, 0.05, M.darkWood, 0, 0.3, 0.03, win, false);
+  box(1.5, 0.06, 0.24, M.darkWood, 0, -1.04, 0.12, win);
+  // ستائر بطيّات
+  for (const side of [-1, 1]) {
+    const geo = new THREE.PlaneGeometry(0.4, 2.8, 40, 1);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) * 60) * 0.025);
+    geo.computeVertexNormals();
+    const c = new THREE.Mesh(geo, M.curtain);
+    c.position.set(side * 0.86, 2.3, -d / 2 + 0.12);
+    c.castShadow = true;
+    scene.add(c);
+  }
+  cyl(0.015, 0.015, 2.2, M.brass, 0, 3.72, -d / 2 + 0.12).rotation.z = Math.PI / 2;
+
+  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.8), new THREE.MeshStandardMaterial({ map: rugTex, roughness: 1 }));
+  rug.rotation.x = -Math.PI / 2;
+  rug.position.set(0, 0.006, 0.7);
+  rug.receiveShadow = true;
+  scene.add(rug);
+}
+
+// ---------- الأثاث ----------
+let candleLight, candleFlame;
+function buildFurniture() {
+  // كرسي القراءة
+  const chair = new THREE.Group();
+  chair.position.set(-2.7, 0, 2.7);
+  chair.rotation.y = Math.atan2(2.7, -2.7); // يواجه وسط الغرفة
+  scene.add(chair);
+  box(1.0, 0.2, 0.9, M.leather, 0, 0.36, 0, chair);
+  box(0.8, 0.14, 0.74, M.cushion, 0, 0.53, 0.05, chair);
+  box(1.0, 0.95, 0.22, M.leather, 0, 0.82, -0.36, chair);
+  box(0.8, 0.5, 0.1, M.cushion, 0, 0.88, -0.22, chair);
+  for (const s of [-1, 1]) {
+    box(0.18, 0.36, 0.9, M.leather, s * 0.5, 0.62, 0, chair);
+    for (const z of [-0.36, 0.36]) cyl(0.03, 0.022, 0.26, M.darkWood, s * 0.42, 0.13, z, chair, 10);
+  }
+
+  // مصباح أرضي
+  const lamp = new THREE.Group();
+  lamp.position.set(-3.75, 0, 1.9);
+  scene.add(lamp);
+  cyl(0.2, 0.22, 0.04, M.brass, 0, 0.02, 0, lamp);
+  cyl(0.018, 0.018, 1.6, M.brass, 0, 0.82, 0, lamp, 12);
+  const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.3, 0.36, 32, 1, true), M.shade);
+  shade.position.y = 1.74;
+  lamp.add(shade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), M.bulb);
+  bulb.position.y = 1.66;
+  lamp.add(bulb);
+  const lampLight = new THREE.PointLight(0xffb46b, 5, 0, 2);
+  lampLight.position.y = 1.6;
+  lamp.add(lampLight);
+
+  // طاولة جانبية مع شمعة
+  const table = new THREE.Group();
+  table.position.set(-1.65, 0, 3.15);
+  scene.add(table);
+  cyl(0.32, 0.32, 0.04, M.wood, 0, 0.6, 0, table, 32);
+  cyl(0.035, 0.05, 0.58, M.darkWood, 0, 0.3, 0, table, 12);
+  cyl(0.18, 0.2, 0.03, M.darkWood, 0, 0.015, 0, table);
+  cyl(0.045, 0.045, 0.16, M.wax, 0.12, 0.7, 0.05, table, 16);
+  cyl(0.07, 0.08, 0.015, M.brass, 0.12, 0.627, 0.05, table, 16);
+  candleFlame = new THREE.Mesh(new THREE.ConeGeometry(0.013, 0.045, 10), M.flame);
+  candleFlame.position.set(0.12, 0.81, 0.05);
+  table.add(candleFlame);
+  candleLight = new THREE.PointLight(0xff9a3c, 0.8, 4, 2);
+  candleLight.position.set(0.12, 0.86, 0.05);
+  table.add(candleLight);
+  return table;
+}
+
+function buildChandelier() {
+  const g = new THREE.Group();
+  g.position.set(0, ROOM.h, 0.4);
+  scene.add(g);
+  cyl(0.012, 0.012, 0.7, M.brass, 0, -0.35, 0, g, 8);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.02, 10, 48), M.brass);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = -0.78;
+  g.add(ring);
+  cyl(0.05, 0.02, 0.16, M.brass, 0, -0.78, 0, g, 12);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const x = Math.cos(a) * 0.38, z = Math.sin(a) * 0.38;
+    cyl(0.035, 0.03, 0.04, M.brass, x, -0.76, z, g, 10);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), M.bulb);
+    b.position.set(x, -0.71, z);
+    g.add(b);
+  }
+  g.traverse(o => { o.castShadow = false; });
+  const light = new THREE.PointLight(0xffc98a, 14, 0, 2);
+  light.position.y = -0.85;
+  g.add(light);
+}
+
+// ---------- الكتب ----------
+const TITLES = [
+  'ألف ليلة وليلة', 'مقدمة ابن خلدون', 'الأيام', 'موسم الهجرة إلى الشمال', 'رجال في الشمس', 'ثلاثية غرناطة',
+  'عزازيل', 'البؤساء', 'الحرب والسلم', 'الجريمة والعقاب', 'مئة عام من العزلة', 'الخيميائي', 'كليلة ودمنة',
+  'رسالة الغفران', 'طوق الحمامة', 'حي بن يقظان', 'الإخوة كارامازوف', 'دون كيخوته', 'الشيخ والبحر',
+  'أولاد حارتنا', 'بين القصرين', 'زقاق المدق', 'النبي', 'الأجنحة المتكسرة', 'شرق المتوسط', 'مدن الملح',
+  'ساق البامبو', 'فرانكشتاين', 'كبرياء وتحامل', 'مزرعة الحيوان', '١٩٨٤', 'الغريب', 'الطاعون', 'المسخ',
+  'الكوميديا الإلهية', 'الإلياذة', 'الأوديسة', 'هاملت', 'عطيل', 'روميو وجولييت', 'أحدب نوتردام',
+  'الكونت دي مونت كريستو', 'جين آير', 'مرتفعات ويذرنغ', 'الأمير الصغير', 'فن الحرب', 'اللص والكلاب',
+  'الحرافيش', 'عائد إلى حيفا', 'أرض البرتقال الحزين', 'الزيني بركات', 'العمى', 'ذاكرة الجسد',
+  'يوميات نائب في الأرياف', 'عودة الروح', 'دعاء الكروان', 'رحلة ابن بطوطة', 'البخلاء', 'العقد الفريد',
+  'أوراق الورد', 'وحي القلم', 'العبرات', 'النظرات', 'الشوقيات', 'ديوان المتنبي', 'المعلقات السبع',
+  'الأسود يليق بك', 'رأيت رام الله', 'الطنطورية', 'شيكاغو', 'عمارة يعقوبيان', 'فئران أمي حصة',
+  'دروز بلغراد', 'نجمة أغسطس', 'سجين السماء', 'ظل الريح', 'العطر', 'الشيطان والآنسة بريم', 'أحلام اليقظة',
+];
+const SETS = ['موسوعة المعرفة', 'الأعمال الكاملة', 'تاريخ الحضارات', 'معجم البلدان', 'روائع الأدب', 'عالم المعرفة', 'قصة الحضارة', 'دائرة المعارف'];
+const NOTEBOOKS = ['دفتر', 'كرّاسة', 'مخطوطة', 'يوميات', 'مذكّرات'];
+const PALETTE = [[355, 55, 28], [140, 35, 22], [215, 45, 25], [25, 45, 24], [40, 60, 38], [0, 0, 11], [340, 45, 22], [180, 35, 22], [30, 25, 46], [270, 25, 25], [15, 60, 34], [200, 15, 30], [45, 30, 60], [100, 20, 30]];
+
+const titlePool = TITLES.slice().sort(() => brand() - 0.5);
+let notebookCount = 0;
+function nextTitle() {
+  if (titlePool.length) return titlePool.pop();
+  notebookCount++;
+  return `${NOTEBOOKS[notebookCount % NOTEBOOKS.length]} ${arNum(notebookCount)}`;
+}
+function randomColor() {
+  const [h, s, l] = PALETTE[Math.floor(brand() * PALETTE.length)];
+  return [h + brr(-6, 6), Math.max(0, s + brr(-8, 8)), l + brr(-4, 4)];
+}
+
+// صندوق واحد مشترك، كل وجه يأخذ جزءاً من نسيج الكتاب: الكعب | الغلاف | الورق
+const TEX_W = 96, TEX_H = 256;
+const bookGeo = (() => {
+  const g = new THREE.BoxGeometry(1, 1, 1);
+  const uv = g.attributes.uv;
+  const spine = [0, 2 / 3], cover = [2 / 3, 5 / 6], pages = [5 / 6, 1];
+  const faces = [cover, cover, pages, pages, spine, pages]; // +x -x +y -y +z -z
+  faces.forEach(([u0, u1], f) => {
+    for (let v = 0; v < 4; v++) {
+      const i = f * 4 + v;
+      uv.setX(i, u0 + uv.getX(i) * (u1 - u0));
+    }
+  });
+  return g;
+})();
+
+function hasWriting(data) { return data.pages.some(p => p && p.trim()); }
+
+function drawBookTexture(ctx, data) {
+  const [h, s, l] = data.color;
+  const base = `hsl(${h}, ${s}%, ${l}%)`;
+  const light = l > 42;
+  const ink = light ? '#2a1a0e' : '#e3c27a';
+  const SW = 64;
+  ctx.clearRect(0, 0, TEX_W, TEX_H);
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, TEX_W, TEX_H);
+  for (let i = 0; i < 260; i++) {
+    ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,255,255'},${Math.random() * 0.06})`;
+    ctx.fillRect(Math.random() * 80, Math.random() * TEX_H, rr(1, 3), rr(1, 3));
+  }
+  // تظليل الكعب المستدير
+  const g = ctx.createLinearGradient(0, 0, SW, 0);
+  g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(0.3, 'rgba(255,255,255,.07)');
+  g.addColorStop(0.55, 'rgba(255,255,255,.12)'); g.addColorStop(1, 'rgba(0,0,0,.45)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, SW, TEX_H);
+
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  if (data.style === 0) {
+    for (const y of [14, 22, TEX_H - 26, TEX_H - 18]) ctx.fillRect(4, y, SW - 8, 3);
+  } else if (data.style === 1) {
+    for (const y of [30, 70, TEX_H - 70, TEX_H - 30]) {
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, y + 3, SW, 4);
+      ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(0, y, SW, 3);
+    }
+    ctx.fillStyle = ink;
+  } else if (data.style === 2) {
+    ctx.fillStyle = light ? '#3a2412' : '#1a120b';
+    ctx.fillRect(6, 52, SW - 12, TEX_H - 104);
+    ctx.strokeStyle = '#e3c27a'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(9, 55, SW - 18, TEX_H - 110);
+    ctx.fillStyle = '#e3c27a';
+  } else {
+    ctx.lineWidth = 1;
+    ctx.strokeRect(6, 8, SW - 12, TEX_H - 16);
+  }
+
+  ctx.save();
+  ctx.translate(SW / 2, TEX_H / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.direction = 'rtl';
+  const maxLen = data.style === 2 ? TEX_H - 124 : TEX_H - 64;
+  let size = 30;
+  do { ctx.font = `700 ${size}px Amiri, serif`; size--; } while (ctx.measureText(data.title).width > maxLen && size > 10);
+  ctx.fillText(data.title, 0, 2);
+  ctx.restore();
+
+  // شريط أحمر صغير يدل على وجود كتابة
+  if (hasWriting(data)) {
+    ctx.fillStyle = '#b3202a';
+    ctx.beginPath();
+    ctx.moveTo(SW - 18, 0); ctx.lineTo(SW - 8, 0); ctx.lineTo(SW - 8, 44); ctx.lineTo(SW - 13, 37); ctx.lineTo(SW - 18, 44);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // الغلاف
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.fillRect(SW, 0, 16, TEX_H);
+  // حواف الورق
+  ctx.fillStyle = '#eee1c0';
+  ctx.fillRect(80, 0, 16, TEX_H);
+  for (let y = 0; y < TEX_H; y += 2) {
+    ctx.fillStyle = `rgba(120,90,50,${rr(0.04, 0.14)})`;
+    ctx.fillRect(80, y, 16, 1);
+  }
+}
+
+const books = [];
+
+function createBook(parent, { id, w, h, d, color, style, title, pullable = true }) {
+  const saved = storage.get(id);
+  const data = {
+    id, color, style,
+    defaultTitle: title,
+    title: saved?.title || title,
+    pages: Array.isArray(saved?.pages) ? saved.pages : [],
+  };
+  const c = document.createElement('canvas');
+  c.width = TEX_W; c.height = TEX_H;
+  const ctx = c.getContext('2d');
+  drawBookTexture(ctx, data);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, maxAniso);
+  const mesh = new THREE.Mesh(bookGeo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.72 }));
+  mesh.scale.set(w, h, d);
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  mesh.userData = { isBook: true, data, ctx, tex, pullable, pull: 0, pullTarget: 0, home: null };
+  books.push(mesh);
+  return mesh;
+}
+
+function refreshBookTexture(mesh) {
+  drawBookTexture(mesh.userData.ctx, mesh.userData.data);
+  mesh.userData.tex.needsUpdate = true;
+}
+
+function fillShelf(group, caseIdx, level, yBase, maxH) {
+  const { w: W, d: D, t: T } = CASE;
+  let x = -W / 2 + T + 0.015;
+  const end = W / 2 - T - 0.015;
+  let n = 0;
+  const id = () => `c${caseIdx}-s${level}-b${n++}`;
+  const frontZ = D / 2 - 0.03;
+
+  while (x < end - 0.05) {
+    const r = brand();
+    if (r < 0.06 && end - x > 0.42) {
+      // كومة كتب ممددة
+      const count = 2 + Math.floor(brand() * 3);
+      const len = brr(0.3, 0.38);
+      let y = yBase;
+      for (let j = 0; j < count; j++) {
+        const th = brr(0.04, 0.07), d = brr(0.24, 0.3);
+        const b = createBook(group, { id: id(), w: th, h: len - j * 0.015, d, color: randomColor(), style: Math.floor(brand() * 4), title: nextTitle() });
+        b.rotation.z = Math.PI / 2;
+        b.position.set(x + len / 2, y + th / 2, frontZ - d / 2 - brr(0, 0.02));
+        y += th;
+      }
+      x += len + 0.03;
+    } else if (r < 0.1) {
+      x += brr(0.04, 0.14); // فراغ صغير
+    } else if (r < 0.2) {
+      // مجموعة مجلدات متشابهة
+      const set = SETS[Math.floor(brand() * SETS.length)];
+      const color = randomColor(), style = Math.floor(brand() * 4);
+      const w = brr(0.07, 0.1), h = Math.min(maxH, brr(0.44, 0.56)), d = brr(0.3, 0.36);
+      const count = 3 + Math.floor(brand() * 6);
+      for (let j = 0; j < count && x + w < end; j++) {
+        const b = createBook(group, { id: id(), w, h, d, color, style, title: `${set} — ج${arNum(j + 1)}` });
+        b.position.set(x + w / 2, yBase + h / 2, frontZ - d / 2);
+        x += w + 0.002;
+      }
+    } else {
+      const w = brr(0.05, 0.13), h = Math.min(maxH, brr(0.36, 0.58)), d = brr(0.26, 0.38);
+      if (x + w > end) break;
+      const b = createBook(group, { id: id(), w, h, d, color: randomColor(), style: Math.floor(brand() * 4), title: nextTitle() });
+      b.position.set(x + w / 2, yBase + h / 2, frontZ - d / 2 - brr(0, 0.015));
+      x += w + 0.002;
+    }
+  }
+}
+
+function buildBookcase(idx, x, z, rotY) {
+  const { w: W, h: H, d: D, t: T, levels } = CASE;
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  scene.add(g);
+
+  box(T, H, D, M.wood, -W / 2 + T / 2, H / 2, 0, g);
+  box(T, H, D, M.wood, W / 2 - T / 2, H / 2, 0, g);
+  box(W + 0.1, 0.08, D + 0.06, M.wood, 0, H - 0.04, 0.01, g);
+  box(W + 0.18, 0.05, D + 0.1, M.darkWood, 0, H + 0.025, 0.02, g);
+  box(W, 0.12, D, M.darkWood, 0, 0.06, 0, g);
+  box(W - 2 * T, H - 0.12, 0.02, M.back, 0, H / 2 + 0.03, -D / 2 + 0.01, g, false);
+
+  const y0 = 0.12, y1 = H - 0.08, gap = (y1 - y0) / levels;
+  for (let i = 1; i < levels; i++) box(W - 2 * T, 0.035, D - 0.02, M.wood, 0, y0 + i * gap, 0, g);
+  for (let k = 0; k < levels; k++) {
+    const yBase = y0 + k * gap + (k > 0 ? 0.0175 : 0);
+    fillShelf(g, idx, k, yBase, gap - 0.07);
+  }
+
+  // مصباح لوحة نحاسي فوق كل مكتبة
+  const bar = cyl(0.02, 0.02, W * 0.6, M.brass, 0, H + 0.12, D / 2 + 0.1, g, 12);
+  bar.rotation.z = Math.PI / 2;
+  cyl(0.012, 0.012, 0.14, M.brass, 0, H + 0.06, D / 2 + 0.03, g, 8).rotation.x = Math.PI / 3;
+  const spot = new THREE.SpotLight(0xffd29a, 9, 5, Math.PI / 3.2, 0.7, 1.6);
+  spot.position.set(0, H + 0.1, D / 2 + 0.25);
+  spot.target.position.set(0, H * 0.35, 0);
+  g.add(spot, spot.target);
+  return g;
+}
+
+function buildTableBooks(table) {
+  let y = 0.62;
+  for (let j = 0; j < 3; j++) {
+    const th = brr(0.04, 0.06);
+    const b = createBook(table, { id: `table-${j}`, w: th, h: 0.3 - j * 0.02, d: 0.22, color: randomColor(), style: j % 4, title: ['دفتر الأفكار', 'قصائد لم تُكتب بعد', 'مذكرات القارئ'][j], pullable: false });
+    b.rotation.set(0, 0.3 * (j - 1) - 0.4, Math.PI / 2);
+    b.position.set(-0.08, y + th / 2, -0.06);
+    y += th;
+  }
+}
+
+// ---------- الإضاءة ----------
+function buildLights() {
+  scene.add(new THREE.HemisphereLight(0xffe2b8, 0x2a1a10, 0.35));
+  const key = new THREE.SpotLight(0xffd6a0, 38, 0, Math.PI / 2.6, 0.9, 1.7);
+  key.position.set(0.5, ROOM.h - 0.05, 1.4);
+  key.target.position.set(0, 0, -0.6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.bias = -0.0004;
+  key.shadow.camera.near = 0.5;
+  key.shadow.camera.far = 12;
+  scene.add(key, key.target);
+  const moon = new THREE.DirectionalLight(0x8aa2ff, 0.35);
+  moon.position.set(0, 3, -6);
+  moon.target.position.set(0, 0, 2);
+  scene.add(moon, moon.target);
+}
+
+// ---------- التفاعل ----------
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+let hovered = null;
+let busy = false;
+let downAt = null;
+
+function pickBook(e) {
+  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(books, false)[0];
+  return hit ? hit.object : null;
+}
+
+function setHover(mesh, e) {
+  if (hovered && hovered !== mesh) hovered.userData.pullTarget = 0;
+  hovered = mesh;
+  document.body.classList.toggle('hovering', !!mesh);
+  if (mesh) {
+    if (mesh.userData.pullable) mesh.userData.pullTarget = 0.07;
+    const { data } = mesh.userData;
+    tooltip.innerHTML = '';
+    tooltip.append(data.title);
+    if (hasWriting(data)) { const s = document.createElement('small'); s.textContent = 'فيه كتابتك ✎'; tooltip.append(s); }
+    tooltip.style.left = e.clientX + 'px';
+    tooltip.style.top = e.clientY + 'px';
+    tooltip.classList.add('show');
+  } else {
+    tooltip.classList.remove('show');
+  }
+}
+
+canvas.addEventListener('pointermove', e => {
+  if (busy || reader.isOpen) return;
+  if (e.pointerType === 'touch') return;
+  setHover(pickBook(e), e);
+});
+canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerup', e => {
+  if (!downAt || busy || reader.isOpen) return;
+  const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+  downAt = null;
+  if (moved > 6) return;
+  const mesh = pickBook(e);
+  if (mesh) openBook(mesh);
+});
+canvas.addEventListener('pointerleave', () => setHover(null));
+
+// ---------- حركة الكتاب ----------
+const tweens = [];
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function tween(obj, toPos, toQuat, duration, lift = 0) {
+  return new Promise(resolve => {
+    tweens.push({ obj, fromPos: obj.position.clone(), fromQuat: obj.quaternion.clone(), toPos, toQuat, duration, lift, t0: performance.now(), resolve });
+  });
+}
+function updateTweens(now) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i];
+    const p = Math.min(1, (now - tw.t0) / tw.duration);
+    const k = ease(p);
+    tw.obj.position.lerpVectors(tw.fromPos, tw.toPos, k);
+    tw.obj.position.y += Math.sin(Math.PI * k) * tw.lift;
+    tw.obj.quaternion.slerpQuaternions(tw.fromQuat, tw.toQuat, k);
+    if (p >= 1) { tweens.splice(i, 1); tw.resolve(); }
+  }
+}
+
+let current = null;
+
+async function openBook(mesh) {
+  busy = true;
+  setHover(null);
+  controls.enabled = false;
+  const ud = mesh.userData;
+  ud.home = { parent: mesh.parent, pos: mesh.position.clone(), quat: mesh.quaternion.clone() };
+  ud.home.pos.z -= ud.pull;
+  ud.pull = ud.pullTarget = 0;
+  scene.attach(mesh);
+
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  const target = camera.position.clone().addScaledVector(dir, 0.95);
+  // الغلاف الأمامي يواجه الكاميرا والكعب على اليمين (كتاب عربي)
+  const q = camera.quaternion.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
+  await tween(mesh, target, q, 750, 0.12);
+  current = mesh;
+  reader.show(ud.data);
+}
+
+async function closeBook() {
+  if (!current) return;
+  const mesh = current;
+  current = null;
+  reader.hide();
+  const { home } = mesh.userData;
+  const worldPos = home.parent.localToWorld(home.pos.clone());
+  const parentQuat = home.parent.getWorldQuaternion(new THREE.Quaternion());
+  const worldQuat = parentQuat.multiply(home.quat);
+  await new Promise(r => setTimeout(r, 120));
+  await tween(mesh, worldPos, worldQuat, 700, 0.1);
+  home.parent.attach(mesh);
+  mesh.position.copy(home.pos);
+  mesh.quaternion.copy(home.quat);
+  refreshBookTexture(mesh);
+  controls.enabled = true;
+  busy = false;
+}
+
+// ---------- القارئ (واجهة الكتابة) ----------
+const reader = (() => {
+  const el = document.getElementById('reader');
+  const bookOpen = document.getElementById('bookOpen');
+  const titleInput = document.getElementById('bookTitle');
+  const coverTitle = document.getElementById('coverTitle');
+  const pageEls = [...bookOpen.querySelectorAll('.page')].map(p => ({ root: p, ta: p.querySelector('textarea'), num: p.querySelector('.num') }));
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const pageInfo = document.getElementById('pageInfo');
+  const saveState = document.getElementById('saveState');
+  let data = null, spread = 0, saveTimer = 0;
+
+  const perSpread = () => (innerWidth < 760 ? 1 : 2);
+
+  function render() {
+    const n = perSpread();
+    bookOpen.classList.toggle('single', n === 1);
+    pageEls.forEach((p, i) => {
+      const idx = spread * n + i;
+      p.ta.dataset.index = idx;
+      p.ta.value = data.pages[idx] || '';
+      p.num.textContent = arNum(idx + 1);
+      p.ta.placeholder = idx === 0 ? 'اكتب هنا… كل ما تكتبه يُحفظ تلقائياً' : '';
+    });
+    const total = Math.max(data.pages.length, (spread + 1) * n);
+    pageInfo.textContent = n === 1
+      ? `صفحة ${arNum(spread + 1)} من ${arNum(total)}`
+      : `صفحتا ${arNum(spread * 2 + 1)}–${arNum(spread * 2 + 2)} من ${arNum(total)}`;
+    prevBtn.disabled = spread === 0;
+    nextBtn.disabled = (spread + 1) * n >= MAX_PAGES;
+  }
+
+  function flip(dirClass) {
+    const f = document.createElement('div');
+    f.className = 'flipper ' + dirClass;
+    bookOpen.appendChild(f);
+    f.addEventListener('animationend', () => f.remove());
+  }
+
+  function go(delta) {
+    const next = spread + delta;
+    if (next < 0 || next * perSpread() >= MAX_PAGES) return;
+    flush();
+    spread = next;
+    flip(delta > 0 ? 'fwd' : 'back');
+    render();
+    pageEls[0].ta.focus({ preventScroll: true });
+  }
+
+  function trimPages() {
+    while (data.pages.length && !(data.pages[data.pages.length - 1] || '').trim()) data.pages.pop();
+  }
+
+  function flush() {
+    if (!data) return;
+    clearTimeout(saveTimer);
+    trimPages();
+    const ok = storage.set(data.id, { title: data.title, pages: data.pages });
+    saveState.textContent = ok ? 'تم الحفظ ✓' : 'تعذّر الحفظ في هذا المتصفح';
+    saveState.classList.toggle('ok', ok);
+  }
+  function scheduleSave() {
+    saveState.textContent = 'جارٍ الحفظ…';
+    saveState.classList.remove('ok');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flush, 500);
+  }
+
+  pageEls.forEach(p => p.ta.addEventListener('input', () => {
+    const idx = +p.ta.dataset.index;
+    while (data.pages.length <= idx) data.pages.push('');
+    data.pages[idx] = p.ta.value;
+    scheduleSave();
+  }));
+  titleInput.addEventListener('input', () => {
+    data.title = titleInput.value.trim() || data.defaultTitle;
+    coverTitle.textContent = data.title;
+    scheduleSave();
+  });
+  prevBtn.addEventListener('click', () => go(-1));
+  nextBtn.addEventListener('click', () => go(1));
+  document.getElementById('closeBtn').addEventListener('click', () => closeBook());
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    flush();
+    const body = data.pages.map((p, i) => `— صفحة ${arNum(i + 1)} —\n${p || ''}`).join('\n\n');
+    const blob = new Blob([`${data.title}\n\n${body}\n`], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${data.title}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  addEventListener('keydown', e => {
+    if (!api.isOpen) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeBook(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); flush(); }
+    if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); go(1); }
+    if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); go(-1); }
+  });
+  addEventListener('resize', () => { if (api.isOpen) { flush(); render(); } });
+
+  const api = {
+    isOpen: false,
+    show(d) {
+      data = d;
+      spread = 0;
+      const [h, s, l] = d.color;
+      el.style.setProperty('--cover', `hsl(${h}, ${s}%, ${Math.max(14, Math.min(l, 40))}%)`);
+      titleInput.value = d.title;
+      coverTitle.textContent = d.title;
+      saveState.textContent = '';
+      const cover = bookOpen.querySelector('.cover');
+      cover.style.animation = 'none';
+      void cover.offsetWidth;
+      cover.style.animation = '';
+      render();
+      el.classList.add('open');
+      el.setAttribute('aria-hidden', 'false');
+      api.isOpen = true;
+      setTimeout(() => api.isOpen && pageEls[0].ta.focus({ preventScroll: true }), 1100);
+    },
+    hide() {
+      flush();
+      el.classList.remove('open');
+      el.setAttribute('aria-hidden', 'true');
+      api.isOpen = false;
+      document.activeElement?.blur();
+    },
+  };
+  return api;
+})();
+
+// ---------- البناء والتشغيل ----------
+function clampInRoom(v, margin) {
+  v.x = THREE.MathUtils.clamp(v.x, -ROOM.w / 2 + 0.55 + margin, ROOM.w / 2 - 0.55 - margin);
+  v.y = THREE.MathUtils.clamp(v.y, 0.35, ROOM.h - 0.35);
+  v.z = THREE.MathUtils.clamp(v.z, -ROOM.d / 2 + 0.55 + margin, ROOM.d / 2 - 0.25 - margin);
+}
+
+async function init() {
+  try {
+    await Promise.race([
+      Promise.all([document.fonts.load('700 30px Amiri'), document.fonts.load('700 30px "Aref Ruqaa"')]),
+      new Promise(r => setTimeout(r, 3000)),
+    ]);
+  } catch { /* نكمل بخط احتياطي */ }
+
+  buildRoom();
+  buildLights();
+  buildChandelier();
+  const table = buildFurniture();
+  const backZ = -ROOM.d / 2 + CASE.d / 2 + 0.02;
+  const sideX = ROOM.w / 2 - CASE.d / 2 - 0.02;
+  buildBookcase(0, -2.6, backZ, 0);
+  buildBookcase(1, 2.6, backZ, 0);
+  buildBookcase(2, -sideX, -0.3, Math.PI / 2);
+  buildBookcase(3, sideX, -0.3, -Math.PI / 2);
+  buildTableBooks(table);
+
+  document.getElementById('loader').classList.add('done');
+  renderer.setAnimationLoop(loop);
+}
+
+function loop(now) {
+  updateTweens(now);
+  // إذا كان الكتاب مفتوحاً ولا توجد حركة، نوفّر المعالج
+  if (reader.isOpen && !tweens.length) return;
+
+  for (const b of books) {
+    const ud = b.userData;
+    if (!ud.pullable || b === current || tweens.some(t => t.obj === b)) continue;
+    if (Math.abs(ud.pull - ud.pullTarget) > 0.0005) {
+      const prev = ud.pull;
+      ud.pull += (ud.pullTarget - ud.pull) * 0.2;
+      b.position.z += ud.pull - prev;
+    }
+  }
+
+  const f = 0.75 + Math.sin(now * 0.011) * 0.08 + Math.sin(now * 0.037) * 0.06 + Math.random() * 0.05;
+  candleLight.intensity = f;
+  candleFlame.scale.set(1, 0.9 + f * 0.2, 1);
+
+  if (controls.enabled) {
+    controls.update();
+    clampInRoom(camera.position, 0);
+    clampInRoom(controls.target, 0.1);
+  }
+  renderer.render(scene, camera);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+init();
+</script>
+</body>
+</html>
