@@ -136,6 +136,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const ROOM = { w: 10, d: 9, h: 4.2 };
 const CASE = { w: 3, h: 3.6, d: 0.5, t: 0.05, levels: 5 };
@@ -178,10 +179,10 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x120c08);
 
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.03, 40);
-camera.position.set(0, 1.75, 3.3);
+camera.position.set(-1.1, 1.9, 3.7);
 
 const controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 1.6, -0.6);
+controls.target.set(0.8, 1.35, -0.6);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.zoomToCursor = true;
@@ -731,6 +732,570 @@ function buildTableBooks(table) {
   }
 }
 
+// ---------- سرير على شكل سيارة فورمولا ----------
+// إحداثيات السيارة المحلية: x للأمام (المقدمة)، y للأعلى، z للجانب
+const catmull = (a, b, c, d, t) => 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t);
+
+// جسم انسيابي من مقاطع عرضية (superellipse) تُنعَّم بين بعضها
+function loft(keys, { steps = 8, segs = 48, power = 4 } = {}) {
+  const secs = [];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const p0 = keys[Math.max(0, i - 1)], p1 = keys[i], p2 = keys[i + 1], p3 = keys[Math.min(keys.length - 1, i + 2)];
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps, sec = {};
+      for (const k of ['x', 'w', 'h', 'y']) sec[k] = catmull(p0[k], p1[k], p2[k], p3[k], t);
+      sec.w = Math.max(sec.w, 0.002); sec.h = Math.max(sec.h, 0.002);
+      secs.push(sec);
+    }
+  }
+  secs.push({ ...keys[keys.length - 1] });
+
+  const x0 = secs[0].x, x1 = secs[secs.length - 1].x, e = 2 / power, row = segs + 1;
+  const pos = [], uv = [], idx = [];
+  const ring = s => {
+    const pts = [];
+    for (let j = 0; j <= segs; j++) {
+      const t = -Math.PI / 2 + (j / segs) * Math.PI * 2; // يبدأ من الأسفل حتى يكون خط الالتقاء مخفياً
+      const c = Math.cos(t), sn = Math.sin(t);
+      pts.push([s.x, s.y + s.h * Math.sign(sn) * Math.abs(sn) ** e, s.w * Math.sign(c) * Math.abs(c) ** e]);
+    }
+    return pts;
+  };
+  secs.forEach(s => ring(s).forEach((p, j) => { pos.push(...p); uv.push((s.x - x0) / (x1 - x0), j / segs); }));
+  for (let i = 0; i < secs.length - 1; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * row + j, b = a + 1, c = a + row, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+  }
+  const sideCount = pos.length / 3;
+  for (const [i, front] of [[0, false], [secs.length - 1, true]]) {
+    const s = secs[i], base = pos.length / 3;
+    pos.push(s.x, s.y, 0); uv.push(front ? 1 : 0, 0.5);
+    ring(s).forEach(p => { pos.push(...p); uv.push(front ? 1 : 0, 0.5); });
+    for (let j = 0; j < segs; j++) {
+      const a = base + 1 + j, b = a + 1;
+      front ? idx.push(base, b, a) : idx.push(base, a, b);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  // دمج النواظم عند خط الالتقاء حتى لا يظهر أثر
+  const n = g.attributes.normal, v = new THREE.Vector3(), w = new THREE.Vector3();
+  for (let i = 0; i < secs.length; i++) {
+    const a = i * row, b = a + segs;
+    if (b >= sideCount) break;
+    v.fromBufferAttribute(n, a).add(w.fromBufferAttribute(n, b)).normalize();
+    n.setXYZ(a, v.x, v.y, v.z); n.setXYZ(b, v.x, v.y, v.z);
+  }
+  return g;
+}
+
+function rod(a, b, r, mat, parent) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, a.distanceTo(b), 10), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// مقطع جناح (NACA) مقلوب لتوليد قوة ضاغطة، الحافة الأمامية باتجاه +x
+function wingElement(chord, span, thick, mat) {
+  const up = [], low = [];
+  for (let i = 0; i <= 24; i++) {
+    const x = (1 - Math.cos(i / 24 * Math.PI)) / 2;
+    const yt = 5 * thick * (0.2969 * Math.sqrt(x) - 0.126 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1036 * x ** 4);
+    const yc = -0.06 * (x < 0.4 ? (2 * 0.4 * x - x * x) / 0.16 : ((1 - 0.8) + 2 * 0.4 * x - x * x) / 0.36);
+    up.push([-x * chord, (yc + yt) * chord]);
+    low.push([-x * chord, (yc - yt) * chord]);
+  }
+  const shape = new THREE.Shape();
+  shape.moveTo(...up[0]);
+  up.slice(1).forEach(p => shape.lineTo(...p));
+  low.reverse().forEach(p => shape.lineTo(...p));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: span, bevelEnabled: false, curveSegments: 4 });
+  g.translate(chord / 2, 0, -span / 2);
+  const m = new THREE.Mesh(g, mat);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+
+function textCanvas(w, h, draw) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = maxAniso;
+  return t;
+}
+
+function buildCarBed() {
+  const RED = '#c4141a', DARK_RED = '#7e0a0e';
+  const car = new THREE.Group();
+  car.name = 'car-bed';
+
+  // ---- الخامات ----
+  const liveryTex = textCanvas(2048, 1024, (ctx, W, H) => {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, DARK_RED); g.addColorStop(0.3, RED); g.addColorStop(0.5, '#e01e24'); g.addColorStop(0.7, RED); g.addColorStop(1, DARK_RED);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // أسفل الهيكل كربون أسود
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, W, H * 0.11); ctx.fillRect(0, H * 0.89, W, H * 0.11);
+    // خطوط بيضاء جانبية
+    ctx.fillStyle = '#f4f4f4';
+    for (const y of [0.14, 0.86]) ctx.fillRect(W * 0.08, H * y - 5, W * 0.92, 10);
+    ctx.fillStyle = '#d4af37';
+    for (const y of [0.165, 0.835]) ctx.fillRect(W * 0.08, H * y - 2, W * 0.92, 4);
+    // شريط علوي في المنتصف
+    ctx.fillStyle = '#f4f4f4'; ctx.fillRect(W * 0.55, H * 0.5 - 26, W * 0.45, 52);
+    ctx.fillStyle = '#111'; ctx.fillRect(W * 0.55, H * 0.5 - 30, W * 0.45, 4); ctx.fillRect(W * 0.55, H * 0.5 + 26, W * 0.45, 4);
+    // رقم السيارة على المقدمة
+    ctx.save();
+    ctx.translate(W * 0.83, H * 0.5);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = '#f4f4f4'; ctx.beginPath(); ctx.ellipse(0, 0, 70, 52, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.font = '900 76px Tajawal, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('07', 0, 6);
+    ctx.restore();
+    // كتابة جانبية على المقدمة (اليمين واليسار)
+    ctx.font = '700 64px "Aref Ruqaa", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+    ctx.fillText('سريع كالخيال', W * 0.72, H * 0.73);
+    ctx.save(); ctx.translate(W * 0.72, H * 0.27); ctx.rotate(Math.PI); ctx.fillText('سريع كالخيال', 0, 0); ctx.restore();
+  });
+  liveryTex.wrapS = THREE.ClampToEdgeWrapping;
+
+  const podTex = textCanvas(1024, 512, (ctx, W, H) => {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#111'); g.addColorStop(0.12, '#111'); g.addColorStop(0.13, DARK_RED); g.addColorStop(0.5, '#e01e24'); g.addColorStop(0.87, DARK_RED); g.addColorStop(0.88, '#111'); g.addColorStop(1, '#111');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#f4f4f4';
+    ctx.beginPath(); ctx.moveTo(0, H * 0.6); ctx.lineTo(W, H * 0.56); ctx.lineTo(W, H * 0.6); ctx.lineTo(0, H * 0.64); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, H * 0.4); ctx.lineTo(W, H * 0.44); ctx.lineTo(W, H * 0.4); ctx.lineTo(0, H * 0.36); ctx.fill();
+    ctx.font = '700 70px "Aref Ruqaa", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 6;
+    ctx.fillText('فريق القرّاء', W * 0.5, H * 0.76);
+    ctx.save(); ctx.translate(W * 0.5, H * 0.24); ctx.rotate(Math.PI); ctx.fillText('فريق القرّاء', 0, 0); ctx.restore();
+  });
+
+  const carbonTex = textCanvas(64, 64, (ctx, W, H) => {
+    for (let y = 0; y < H; y += 8) for (let x = 0; x < W; x += 8) {
+      const odd = ((x + y) / 8) % 2;
+      const g = odd ? ctx.createLinearGradient(x, y, x + 8, y) : ctx.createLinearGradient(x, y, x, y + 8);
+      g.addColorStop(0, '#1c1c1e'); g.addColorStop(0.5, '#3a3a3e'); g.addColorStop(1, '#1c1c1e');
+      ctx.fillStyle = g; ctx.fillRect(x, y, 8, 8);
+    }
+  });
+  carbonTex.wrapS = carbonTex.wrapT = THREE.RepeatWrapping;
+  carbonTex.repeat.set(14, 14);
+
+  const quiltTex = textCanvas(512, 512, (ctx, W, H) => {
+    ctx.fillStyle = '#ece8df'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,110,95,.35)'; ctx.lineWidth = 2;
+    for (let i = -W; i < W * 2; i += 64) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i, H); ctx.lineTo(i + H, 0); ctx.stroke();
+    }
+  });
+  quiltTex.wrapS = quiltTex.wrapT = THREE.RepeatWrapping;
+  quiltTex.repeat.set(3, 1.5);
+
+  const duvetTex = textCanvas(1024, 768, (ctx, W, H) => {
+    ctx.fillStyle = '#1b2440'; ctx.fillRect(0, 0, W, H);
+    // نسيج القماش
+    for (let i = 0; i < 9000; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`;
+      ctx.fillRect(Math.random() * W, Math.random() * H, 2, 1);
+    }
+    // علم الشطرنج عند القدمين
+    const s = 48;
+    for (let y = 0; y < H; y += s) for (let x = W - s * 4; x < W; x += s) {
+      ctx.fillStyle = ((x / s + y / s) | 0) % 2 ? '#f2f2f2' : '#151515';
+      ctx.fillRect(x, y, s, s);
+    }
+    ctx.fillStyle = '#c4141a'; ctx.fillRect(W - s * 4 - 40, 0, 26, H);
+    ctx.fillStyle = '#f2f2f2'; ctx.fillRect(W - s * 4 - 58, 0, 8, H);
+    // خياطة
+    ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.setLineDash([10, 8]); ctx.lineWidth = 2;
+    for (let y = 96; y < H; y += 192) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W - s * 4 - 60, y); ctx.stroke(); }
+    ctx.setLineDash([]);
+    ctx.font = '900 150px Tajawal, Arial, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.save(); ctx.translate(W * 0.42, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('07', 0, 0); ctx.restore();
+  });
+
+  const paint = new THREE.MeshPhysicalMaterial({ map: liveryTex, roughness: 0.32, metalness: 0.25, clearcoat: 1, clearcoatRoughness: 0.06 });
+  const podPaint = paint.clone(); podPaint.map = podTex;
+  const plainPaint = new THREE.MeshPhysicalMaterial({ color: 0xc4141a, roughness: 0.32, metalness: 0.25, clearcoat: 1, clearcoatRoughness: 0.06 });
+  const carbon = new THREE.MeshPhysicalMaterial({ map: carbonTex, color: 0x9a9a9a, roughness: 0.38, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.12 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.6 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.88, side: THREE.DoubleSide });
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0x1d1d20, metalness: 0.85, roughness: 0.28, side: THREE.DoubleSide });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1, roughness: 0.25 });
+  const chrome = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.04 });
+  const white = new THREE.MeshPhysicalMaterial({ color: 0xf2f2f2, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08 });
+  const reflective = [paint, podPaint, plainPaint, carbon, rimMat, gold, chrome, white];
+
+  const add = (geo, mat, x = 0, y = 0, z = 0, parent = car) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    parent.add(m);
+    return m;
+  };
+
+  // ---- الهيكل الرئيسي (من الخلف حتى رأس المقدمة) ----
+  add(loft([
+    { x: -1.42, w: 0.16, h: 0.12, y: 0.33 },
+    { x: -1.25, w: 0.3, h: 0.19, y: 0.34 },
+    { x: -1.05, w: 0.46, h: 0.2, y: 0.32 },
+    { x: -0.85, w: 0.51, h: 0.19, y: 0.3 },
+    { x: 0.0, w: 0.51, h: 0.19, y: 0.3 },
+    { x: 0.85, w: 0.49, h: 0.18, y: 0.3 },
+    { x: 1.02, w: 0.34, h: 0.15, y: 0.3 },
+    { x: 1.3, w: 0.19, h: 0.1, y: 0.27 },
+    { x: 1.58, w: 0.1, h: 0.055, y: 0.21 },
+    { x: 1.76, w: 0.055, h: 0.035, y: 0.18 },
+  ]), paint);
+
+  // غطاء المحرك = لوح الرأس
+  add(loft([
+    { x: -0.92, w: 0.46, h: 0.1, y: 0.54 },
+    { x: -0.98, w: 0.43, h: 0.28, y: 0.7 },
+    { x: -1.12, w: 0.34, h: 0.3, y: 0.68 },
+    { x: -1.3, w: 0.17, h: 0.17, y: 0.55 },
+    { x: -1.46, w: 0.07, h: 0.08, y: 0.44 },
+  ], { steps: 10 }), paint);
+  // مدخل الهواء فوق الرأس
+  add(loft([
+    { x: -0.95, w: 0.1, h: 0.085, y: 0.99 },
+    { x: -1.06, w: 0.12, h: 0.1, y: 0.97 },
+    { x: -1.3, w: 0.05, h: 0.05, y: 0.84 },
+  ]), plainPaint);
+  const intake = add(new THREE.CircleGeometry(0.07, 32), black, -0.948, 0.99, 0);
+  intake.rotation.y = Math.PI / 2; intake.scale.set(1, 1.05, 1);
+  // دعامة الأمان (roll hoop)
+  const hoop = add(new THREE.TorusGeometry(0.09, 0.012, 8, 24, Math.PI), carbon, -0.97, 1.0, 0);
+  hoop.rotation.y = Math.PI / 2;
+
+  // زعنفة القرش مع الرقم
+  const fin = new THREE.Shape();
+  fin.moveTo(-1.08, 1.05); fin.lineTo(-1.52, 0.98); fin.lineTo(-1.52, 0.72); fin.quadraticCurveTo(-1.3, 0.8, -1.08, 0.95);
+  const finGeo = new THREE.ExtrudeGeometry(fin, { depth: 0.012, bevelEnabled: false });
+  finGeo.translate(0, 0, -0.006);
+  add(finGeo, white);
+  const numTex = textCanvas(256, 128, (ctx, W, H) => {
+    ctx.font = '900 96px Tajawal, Arial, sans-serif'; ctx.fillStyle = '#c4141a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('07', W / 2, H / 2 + 6);
+  });
+  for (const s of [1, -1]) {
+    const p = add(new THREE.PlaneGeometry(0.22, 0.11), new THREE.MeshBasicMaterial({ map: numTex, transparent: true, toneMapped: false }), -1.3, 0.92, s * 0.0075);
+    p.rotation.y = s > 0 ? 0 : Math.PI;
+    p.castShadow = false;
+  }
+
+  // ---- الفرشة والمفارش ----
+  add(new RoundedBoxGeometry(1.86, 0.17, 0.9, 4, 0.06), new THREE.MeshStandardMaterial({ map: quiltTex, roughness: 0.95 }), 0.02, 0.565, 0);
+  // حواف قمرة القيادة حول الفرشة
+  for (const s of [-1, 1]) add(new RoundedBoxGeometry(1.92, 0.24, 0.075, 4, 0.03), plainPaint, 0.02, 0.55, s * 0.48);
+  add(new RoundedBoxGeometry(0.08, 0.24, 1.03, 4, 0.03), plainPaint, 0.98, 0.56, 0);
+  // حافة سوداء ناعمة (مثل حافة القمرة)
+  for (const s of [-1, 1]) add(new RoundedBoxGeometry(1.88, 0.03, 0.05, 2, 0.012), black, 0.02, 0.675, s * 0.47);
+
+  // اللحاف مع طيّات
+  const duvetGeo = new THREE.PlaneGeometry(1.42, 0.98, 60, 30);
+  duvetGeo.rotateX(-Math.PI / 2);
+  const dp = duvetGeo.attributes.position;
+  for (let i = 0; i < dp.count; i++) {
+    const x = dp.getX(i), z = dp.getZ(i);
+    const edge = Math.max(0, Math.abs(z) - 0.38) / 0.11;
+    let y = 0.018 * Math.sin(x * 9 + z * 4) * Math.sin(z * 11) + 0.012 * Math.sin(x * 23 + 1.3) * (1 - edge);
+    y += 0.03 * Math.exp(-((x + 0.1) ** 2) * 30) * Math.cos(z * 3); // انتفاخ خفيف في الوسط
+    y -= edge * edge * 0.07;
+    dp.setY(i, y);
+  }
+  duvetGeo.computeVertexNormals();
+  add(duvetGeo, new THREE.MeshStandardMaterial({ map: duvetTex, roughness: 0.92, side: THREE.DoubleSide }), 0.24, 0.665, 0).castShadow = false;
+  // طرف الشرشف الأبيض المطوي
+  add(new RoundedBoxGeometry(0.14, 0.035, 0.94, 3, 0.015), new THREE.MeshStandardMaterial({ color: 0xf4f2ee, roughness: 0.95 }), -0.47, 0.672, 0);
+
+  // مخدة منفوخة
+  const pillowGeo = new RoundedBoxGeometry(0.34, 0.13, 0.66, 8, 0.065);
+  const pp = pillowGeo.attributes.position;
+  for (let i = 0; i < pp.count; i++) {
+    const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i);
+    const f = (1 - (Math.abs(z) / 0.33) ** 4 * 0.55) * (1 - (Math.abs(x) / 0.17) ** 4 * 0.45);
+    pp.setY(i, y * f);
+  }
+  pillowGeo.computeVertexNormals();
+  const pillow = add(pillowGeo, new THREE.MeshStandardMaterial({ color: 0xf6f4ef, roughness: 0.95 }), -0.7, 0.715, 0.02);
+  pillow.rotation.set(0, 0.08, -0.12);
+  // مخدة صغيرة على شكل خوذة/علم
+  const cush = add(new RoundedBoxGeometry(0.2, 0.06, 0.3, 6, 0.03), new THREE.MeshStandardMaterial({ color: 0xc4141a, roughness: 0.85 }), -0.52, 0.735, -0.2);
+  cush.rotation.set(0.1, -0.5, -0.4);
+
+  // ---- البودات الجانبية ----
+  for (const s of [-1, 1]) {
+    const pod = add(loft([
+      { x: 0.78, w: 0.1, h: 0.1, y: 0.37 },
+      { x: 0.62, w: 0.14, h: 0.15, y: 0.35 },
+      { x: 0.2, w: 0.14, h: 0.14, y: 0.33 },
+      { x: -0.35, w: 0.11, h: 0.11, y: 0.28 },
+      { x: -0.72, w: 0.05, h: 0.05, y: 0.22 },
+    ]), podPaint, 0, 0, s * 0.6);
+    const mouth = add(new THREE.CircleGeometry(0.1, 32), black, 0.785, 0.37, s * 0.6);
+    mouth.rotation.y = Math.PI / 2; mouth.scale.set(0.85, 0.9, 1);
+    // مرايا جانبية
+    const stalkA = new THREE.Vector3(0.82, 0.66, s * 0.5), stalkB = new THREE.Vector3(0.79, 0.75, s * 0.6);
+    rod(stalkA, stalkB, 0.012, carbon, car);
+    add(new RoundedBoxGeometry(0.07, 0.075, 0.19, 3, 0.03), plainPaint, 0.795, 0.77, s * 0.64);
+    const glass = add(new THREE.PlaneGeometry(0.16, 0.055), chrome, 0.758, 0.77, s * 0.64);
+    glass.rotation.y = -Math.PI / 2;
+    // ألواح التوجيه أمام البود
+    for (let k = 0; k < 3; k++) {
+      const b = add(new THREE.BoxGeometry(0.12, 0.13 - k * 0.025, 0.006), carbon, 0.92 - k * 0.04, 0.16, s * (0.56 + k * 0.035));
+      b.rotation.y = s * 0.12;
+    }
+  }
+
+  // الأرضية الكربونية والناشر الخلفي
+  add(new RoundedBoxGeometry(2.45, 0.03, 1.36, 2, 0.012), carbon, -0.2, 0.08, 0);
+  add(new THREE.BoxGeometry(0.5, 0.012, 0.18), new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.8 }), 0.0, 0.063, 0); // لوح الخشب السفلي
+  for (let k = -3; k <= 3; k++) {
+    const f = add(new THREE.BoxGeometry(0.34, 0.1, 0.008), carbon, -1.38, 0.13, k * 0.11);
+    f.rotation.z = 0.25;
+  }
+  const diffTop = add(new THREE.BoxGeometry(0.36, 0.01, 0.74), carbon, -1.38, 0.17, 0);
+  diffTop.rotation.z = 0.25;
+  // ضوء المطر الخلفي
+  const rainLight = add(new THREE.BoxGeometry(0.02, 0.045, 0.09), new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff1020, emissiveIntensity: 2 }), -1.5, 0.4, 0);
+  rainLight.castShadow = false;
+
+  // ---- الجناح الخلفي ----
+  const rear = new THREE.Group();
+  rear.position.set(-1.5, 0, 0);
+  car.add(rear);
+  const mainPlane = wingElement(0.3, 0.98, 0.1, carbon);
+  mainPlane.position.set(0.02, 0.9, 0); mainPlane.rotation.z = -0.08;
+  rear.add(mainPlane);
+  const flap = wingElement(0.17, 0.98, 0.1, plainPaint);
+  flap.position.set(-0.12, 0.99, 0); flap.rotation.z = -0.5;
+  rear.add(flap);
+  const beam = wingElement(0.16, 0.86, 0.12, carbon);
+  beam.position.set(0.06, 0.45, 0); beam.rotation.z = -0.15;
+  rear.add(beam);
+  const plateTex = textCanvas(256, 256, (ctx, W, H) => {
+    ctx.fillStyle = '#c4141a'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, H * 0.55); ctx.lineTo(W, H); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '900 64px Tajawal, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('07', W * 0.5, H * 0.38);
+    ctx.fillStyle = '#d4af37'; ctx.fillRect(0, H * 0.48, W, 6);
+  });
+  const plateMat = new THREE.MeshPhysicalMaterial({ map: plateTex, roughness: 0.3, clearcoat: 1 });
+  for (const s of [-1, 1]) {
+    const ep = add(new RoundedBoxGeometry(0.42, 0.5, 0.016, 2, 0.006), plateMat, -0.04, 0.82, s * 0.5, rear);
+    if (s < 0) ep.rotation.y = Math.PI;
+  }
+  // عمود التثبيت في المنتصف
+  add(new THREE.BoxGeometry(0.1, 0.42, 0.02), carbon, 0.0, 0.66, 0, rear);
+  rod(new THREE.Vector3(0.05, 0.5, 0), new THREE.Vector3(0.25, 0.42, 0), 0.012, carbon, rear);
+
+  // ---- الجناح الأمامي ----
+  const front = new THREE.Group();
+  front.position.set(1.72, 0, 0);
+  car.add(front);
+  const fw = [
+    { c: 0.28, x: 0.0, y: 0.075, a: -0.03, mat: carbon },
+    { c: 0.17, x: -0.16, y: 0.12, a: -0.28, mat: plainPaint },
+    { c: 0.13, x: -0.27, y: 0.165, a: -0.5, mat: white },
+  ];
+  for (const e of fw) {
+    const m = wingElement(e.c, 1.64, 0.1, e.mat);
+    m.position.set(e.x, e.y, 0); m.rotation.z = e.a;
+    front.add(m);
+  }
+  for (const s of [-1, 1]) {
+    add(new RoundedBoxGeometry(0.42, 0.2, 0.014, 2, 0.005), plateMat, -0.1, 0.12, s * 0.82, front);
+    add(new THREE.BoxGeometry(0.3, 0.012, 0.06), carbon, -0.08, 0.025, s * 0.79, front);
+  }
+  for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.1, 0.12, 0.012), carbon, -0.12, 0.15, s * 0.06, front);
+
+  // ---- العجلات ----
+  const sidewallTex = textCanvas(1024, 1024, (ctx, W, H) => {
+    const cx = W / 2, cy = H / 2, R = W / 2;
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = '#d61c1c'; ctx.lineWidth = 16;
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.9, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, R * 0.8, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#e8e8e8'; ctx.font = '900 46px Tajawal, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const words = ['SOFT', 'RACING', 'SOFT', 'RACING'];
+    words.forEach((word, k) => {
+      const base = (k / words.length) * Math.PI * 2;
+      const step = 0.075;
+      [...word].forEach((ch, i) => {
+        ctx.save();
+        const a = base + (i - word.length / 2) * step;
+        ctx.rotate(a);
+        ctx.translate(0, -R * 0.85);
+        ctx.fillText(ch, 0, 0);
+        ctx.restore();
+      });
+    });
+  });
+  const sidewallMat = new THREE.MeshStandardMaterial({ map: sidewallTex, transparent: true, roughness: 0.8, depthWrite: false });
+
+  function buildWheel(r, width, side) {
+    const g = new THREE.Group();
+    const ri = r * 0.6, hw = width / 2, k = 0.04;
+    const prof = [new THREE.Vector2(ri, -hw * 0.9), new THREE.Vector2(r - k * 1.6, -hw)];
+    const corner = (cx, cy, a0, a1) => { for (let i = 0; i <= 8; i++) { const a = a0 + (a1 - a0) * i / 8; prof.push(new THREE.Vector2(cx + Math.cos(a) * k, cy + Math.sin(a) * k)); } };
+    corner(r - k, -hw + k, -Math.PI / 2, 0);
+    corner(r - k, hw - k, 0, Math.PI / 2);
+    prof.push(new THREE.Vector2(r - k * 1.6, hw), new THREE.Vector2(ri, hw * 0.9));
+    add(new THREE.LatheGeometry(prof, 64), rubber, 0, 0, 0, g);
+
+    const wall = add(new THREE.RingGeometry(ri + 0.005, r - 0.025, 64), sidewallMat, 0, hw + 0.002, 0, g);
+    wall.rotation.x = -Math.PI / 2; wall.castShadow = false;
+
+    add(new THREE.CylinderGeometry(ri, ri, width * 0.85, 48, 1, true), rimMat, 0, 0, 0, g);
+    const face = add(new THREE.CircleGeometry(ri, 48), rimMat, 0, hw * 0.55, 0, g);
+    face.rotation.x = -Math.PI / 2;
+    // قرص الفرامل خلف الجنط
+    const disc = add(new THREE.CylinderGeometry(ri * 0.82, ri * 0.82, 0.02, 40), new THREE.MeshStandardMaterial({ color: 0x3a3a3a, metalness: 0.6, roughness: 0.5 }), 0, hw * 0.2, 0, g);
+    disc.castShadow = false;
+    // غطاء العجلة الهوائي والأذرع
+    const lip = add(new THREE.TorusGeometry(ri, 0.009, 8, 64), gold, 0, hw * 0.86, 0, g);
+    lip.rotation.x = Math.PI / 2;
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const sp = add(new THREE.BoxGeometry(ri * 0.72, 0.018, 0.02), rimMat, Math.cos(a) * ri * 0.55, hw * 0.62, Math.sin(a) * ri * 0.55, g);
+      sp.rotation.y = -a;
+    }
+    add(new THREE.CylinderGeometry(ri * 0.22, ri * 0.25, 0.06, 6), new THREE.MeshStandardMaterial({ color: 0xc4141a, metalness: 0.6, roughness: 0.3 }), 0, hw * 0.65, 0, g);
+    add(new THREE.CylinderGeometry(ri * 0.1, ri * 0.1, 0.08, 16), gold, 0, hw * 0.7, 0, g);
+    g.rotation.x = side * Math.PI / 2; // الوجه الخارجي للخارج
+    return g;
+  }
+
+  const wheels = [
+    { x: 1.18, r: 0.29, w: 0.28 },
+    { x: -1.02, r: 0.32, w: 0.36 },
+  ];
+  for (const wd of wheels) {
+    for (const s of [-1, 1]) {
+      const zc = s * (0.55 + wd.w / 2 + 0.05);
+      const wheel = buildWheel(wd.r, wd.w, s);
+      wheel.position.set(wd.x, wd.r, zc);
+      car.add(wheel);
+      // تعليق: ذراعان على شكل V وقضيب دفع
+      const hubZ = zc - s * (wd.w / 2 - 0.04);
+      for (const [dy, inner] of [[0.09, 0.44], [-0.1, 0.4]]) {
+        const hub = new THREE.Vector3(wd.x, wd.r + dy, hubZ);
+        rod(new THREE.Vector3(wd.x + 0.16, wd.r + dy * 0.6, s * inner), hub, 0.011, carbon, car);
+        rod(new THREE.Vector3(wd.x - 0.16, wd.r + dy * 0.6, s * inner), hub, 0.011, carbon, car);
+      }
+      rod(new THREE.Vector3(wd.x, wd.r - 0.08, hubZ), new THREE.Vector3(wd.x - 0.08, wd.r + 0.17, s * 0.38), 0.009, carbon, car);
+      // كتلة المحور
+      add(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 16), rimMat, wd.x, wd.r, hubZ + s * 0.02).rotation.x = Math.PI / 2;
+    }
+  }
+
+  // توهج أحمر خفيف تحت السيارة
+  const glowTex = textCanvas(256, 128, (ctx, W, H) => {
+    const g = ctx.createRadialGradient(W / 2, H / 2, 4, W / 2, H / 2, W / 2);
+    g.addColorStop(0, 'rgba(255,40,50,.55)'); g.addColorStop(0.6, 'rgba(255,20,40,.18)'); g.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  });
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.7), new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(0.1, 0.012, 0);
+  car.add(glow);
+
+  // المقدمة باتجاه عمق الغرفة، والسرير بمحاذاة الجدار الأيمن
+  car.position.set(ROOM.w / 2 - 1.02, 0, 1.75);
+  car.rotation.y = Math.PI / 2;
+  scene.add(car);
+
+  // إضاءة دافئة فوق السرير تبرز السيارة والملصق
+  const bedLight = new THREE.SpotLight(0xffe0b8, 22, 7, Math.PI / 4.2, 0.6, 1.5);
+  bedLight.position.set(car.position.x - 1.3, ROOM.h - 0.1, car.position.z + 0.3);
+  bedLight.target.position.set(car.position.x, 0.4, car.position.z);
+  bedLight.castShadow = true;
+  bedLight.shadow.mapSize.set(1024, 1024);
+  bedLight.shadow.bias = -0.0005;
+  scene.add(bedLight, bedLight.target);
+
+  // انعكاسات حقيقية للغرفة على طلاء السيارة
+  const cubeRT = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+  const cubeCam = new THREE.CubeCamera(0.05, 20, cubeRT);
+  cubeCam.position.set(car.position.x - 0.4, 1.1, car.position.z);
+  scene.add(cubeCam);
+  car.visible = false;
+  cubeCam.update(renderer, scene);
+  car.visible = true;
+  for (const m of reflective) { m.envMap = cubeRT.texture; m.envMapIntensity = 1.2; m.needsUpdate = true; }
+
+  return { rainLight };
+}
+
+// ملصق سباق وخوذة بجانب السرير
+function buildRacingDecor() {
+  const posterTex = canvasTexture(768, 512, (ctx, W, H) => {
+    ctx.fillStyle = '#101418'; ctx.fillRect(0, 0, W, H);
+    const s = 32;
+    for (let y = 0; y < 96; y += s) for (let x = 0; x < W; x += s) {
+      ctx.fillStyle = ((x / s + y / s) | 0) % 2 ? '#eee' : '#111'; ctx.fillRect(x, y, s, s);
+    }
+    // مخطط حلبة
+    ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 10; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(140, 400); ctx.lineTo(560, 400); ctx.quadraticCurveTo(660, 400, 640, 320); ctx.lineTo(600, 230);
+    ctx.quadraticCurveTo(580, 170, 500, 190); ctx.lineTo(420, 230); ctx.quadraticCurveTo(360, 260, 330, 200);
+    ctx.quadraticCurveTo(300, 140, 220, 160); ctx.quadraticCurveTo(110, 190, 120, 300); ctx.closePath();
+    ctx.stroke();
+    ctx.strokeStyle = '#c4141a'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#d4af37'; ctx.font = '700 46px "Aref Ruqaa", serif'; ctx.textAlign = 'center';
+    ctx.fillText('جائزة الأحلام الكبرى', W / 2, 480);
+    ctx.fillStyle = '#c4141a'; ctx.beginPath(); ctx.arc(140, 400, 12, 0, Math.PI * 2); ctx.fill();
+  });
+  const poster = new THREE.Group();
+  poster.position.set(ROOM.w / 2 - 0.02, 2.25, 1.75);
+  poster.rotation.y = -Math.PI / 2;
+  scene.add(poster);
+  box(1.42, 0.98, 0.04, M.darkWood, 0, 0, 0, poster, false);
+  const art = new THREE.Mesh(new THREE.PlaneGeometry(1.32, 0.88), new THREE.MeshStandardMaterial({ map: posterTex, roughness: 0.5 }));
+  art.position.z = 0.022;
+  poster.add(art);
+
+  // خوذة على الأرض قرب المقدمة
+  const helmet = new THREE.Group();
+  helmet.position.set(ROOM.w / 2 - 2.05, 0, 0.35);
+  helmet.rotation.y = -0.9;
+  scene.add(helmet);
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(0.15, 40, 30, 0, Math.PI * 2, 0, Math.PI * 0.68), new THREE.MeshPhysicalMaterial({ color: 0xf2f2f2, roughness: 0.25, clearcoat: 1 }));
+  shell.scale.set(1.12, 1, 1);
+  shell.position.y = 0.1;
+  shell.castShadow = true;
+  helmet.add(shell);
+  const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.151, 0.012, 8, 48, Math.PI), new THREE.MeshPhysicalMaterial({ color: 0xc4141a, roughness: 0.3, clearcoat: 1 }));
+  stripe.scale.set(1.12, 1, 1);
+  stripe.position.y = 0.1;
+  helmet.add(stripe);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.153, 32, 12, -0.95, 1.9, Math.PI * 0.4, Math.PI * 0.17), new THREE.MeshPhysicalMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.05, clearcoat: 1 }));
+  visor.scale.set(1.12, 1, 1);
+  visor.rotation.y = Math.PI / 2;
+  visor.position.y = 0.1;
+  helmet.add(visor);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.125, 0.018, 10, 40), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.7 }));
+  rim.rotation.x = Math.PI / 2;
+  rim.scale.set(1.15, 1, 1);
+  rim.position.y = 0.02;
+  helmet.add(rim);
+}
+
 // ---------- الإضاءة ----------
 function buildLights() {
   scene.add(new THREE.HemisphereLight(0xffe2b8, 0x2a1a10, 0.35));
@@ -1016,13 +1581,16 @@ async function init() {
   buildBookcase(0, -2.6, backZ, 0);
   buildBookcase(1, 2.6, backZ, 0);
   buildBookcase(2, -sideX, -0.3, Math.PI / 2);
-  buildBookcase(3, sideX, -0.3, -Math.PI / 2);
+  buildBookcase(3, sideX, -1.9, -Math.PI / 2);
   buildTableBooks(table);
+  carBed = buildCarBed();
+  buildRacingDecor();
 
   document.getElementById('loader').classList.add('done');
   renderer.setAnimationLoop(loop);
 }
 
+let carBed = null;
 function loop(now) {
   updateTweens(now);
   // إذا كان الكتاب مفتوحاً ولا توجد حركة، نوفّر المعالج
@@ -1041,6 +1609,7 @@ function loop(now) {
   const f = 0.75 + Math.sin(now * 0.011) * 0.08 + Math.sin(now * 0.037) * 0.06 + Math.random() * 0.05;
   candleLight.intensity = f;
   candleFlame.scale.set(1, 0.9 + f * 0.2, 1);
+  carBed.rainLight.material.emissiveIntensity = Math.floor(now / 450) % 2 ? 3 : 0.3;
 
   if (controls.enabled) {
     controls.update();
