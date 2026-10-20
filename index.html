@@ -244,6 +244,8 @@ const ASSETS = LOW ? {
 const CAR_MODEL = { url: LOW ? 'assets/models/ferrari_f2008_mobile.glb' : 'assets/models/ferrari_f2008.glb', scale: 0.88, center: -0.36 };
 // ثعلب واقعي متحرك: "Animated Fox 3D Model" من AnimalMesh 3D على Sketchfab (CC-BY 4.0)
 const FOX = { url: LOW ? 'assets/models/fox_mobile.glb' : 'assets/models/fox.glb', length: 0.95 };
+// الجري الحقيقي (~6.5 م/ث) أسرع من الغرفة، فالمطاردة بهرولة مُبطّأة؛ السرعة والإيقاع يتغيّران معاً
+const FOX_GAITS = { WalkSlow: 1, Loco_Walk: 1, Trot: 0.65 };
 const FOX_IDLES = ['A1_Stand_Idle_02', 'A3_Stand_Idle_01', 'A2_Stand_Eating_01', 'A4_Stand_Breathing_01'];
 // الاستلقاء والجلوس: انتقال للأسفل، حلقة راحة، انتقال للأعلى
 const FOX_RESTS = [
@@ -1410,6 +1412,21 @@ function buildFox() {
   root.position.set(-1.2, PLAY.y, -1.2);
   scene.add(root);
 
+  // حركات المشي والجري تحرّك عظمة الجذر للأمام ثم تقفز للخلف مع كل دورة.
+  // نثبّتها في مكانها، ونحسب منها السرعة الطبيعية لكل مشية حتى لا تنزلق القوائم
+  root.updateMatrixWorld(true);
+  const rootBone = root.getObjectByName('RigRoot_01') || root.getObjectByProperty('isBone', true);
+  const toWorld = new THREE.Matrix3().setFromMatrix4(rootBone.parent.matrixWorld);
+  const speeds = {};
+  for (const clip of T.fox.animations) {
+    const track = clip.tracks.find(t => t.name === `${rootBone.name}.position`);
+    if (!track) continue;
+    const v = track.values, n = v.length;
+    const travel = new THREE.Vector3(v[n - 3] - v[0], v[n - 2] - v[1], v[n - 1] - v[2]).applyMatrix3(toWorld);
+    if (travel.length() > 0.01 && clip.duration > 0) speeds[clip.name] = travel.length() / clip.duration;
+    for (let i = 0; i < n; i += 3) { v[i] = v[0]; v[i + 1] = v[1]; v[i + 2] = v[2]; }
+  }
+
   const mixer = new THREE.AnimationMixer(root);
   const actions = Object.fromEntries(T.fox.animations.map(c => [c.name, mixer.clipAction(c)]));
 
@@ -1424,7 +1441,7 @@ function buildFox() {
   ball.position.set(0.4, PLAY.y + R, -0.6);
   scene.add(ball);
 
-  fox = { root, mixer, actions, ball, R, vel: new THREE.Vector3(), state: 'idle', timer: 1.5, current: null, wander: new THREE.Vector3(), rest: null };
+  fox = { root, mixer, actions, speeds, ball, R, vel: new THREE.Vector3(), state: 'idle', timer: 2, current: null, wander: new THREE.Vector3(), rest: null, gait: 'Trot' };
   playFox(FOX_IDLES[0]);
 }
 
@@ -1477,13 +1494,13 @@ function updateFox(dt) {
 
   // سلوك الثعلب: يتلفّت أو يأكل، يتمشى، يستلقي أو يجلس، ويطارد الكرة
   fox.timer -= dt;
-  let target = null, speed = 0, gait = 'WalkSlow';
+  let target = null, gait = 'WalkSlow';
   if (fox.state === 'idle' && fox.timer <= 0) {
     const r = Math.random();
-    if (r < 0.25) {
+    if (r < 0.35) {
       fox.state = 'wander';
-      fox.wander.set(THREE.MathUtils.randFloat(PLAY.x0, PLAY.x1), 0, THREE.MathUtils.randFloat(PLAY.z0, PLAY.z1));
-    } else if (r < 0.4) {
+      fox.wander.set(THREE.MathUtils.randFloat(PLAY.x0 + 0.4, PLAY.x1 - 0.4), 0, THREE.MathUtils.randFloat(PLAY.z0 + 0.4, PLAY.z1 - 0.4));
+    } else if (r < 0.55) {
       fox.rest = pick(FOX_RESTS);
       fox.state = 'down';
       fox.timer = playFox(fox.rest[0], true);
@@ -1498,24 +1515,32 @@ function updateFox(dt) {
     fox.state = 'up';
     fox.timer = playFox(fox.rest[2], true);
   } else if (fox.state === 'up' && fox.timer <= 0) {
-    foxIdle(0.8, 1.6);
+    foxIdle(1.5, 3);
   } else if (fox.state === 'wander') {
-    target = fox.wander; speed = 0.42; gait = 'WalkSlow';
+    target = fox.wander;
   } else if (fox.state === 'chase') {
     target = ball.position;
-    const far = root.position.distanceTo(ball.position) > 1.4;
-    speed = far ? 2.2 : 1.0; gait = far ? 'Run' : 'Trot';
+    // عتبتان مختلفتان حتى لا يتبدّل بين الجري والهرولة كل لحظة
+    const d = root.position.distanceTo(ball.position);
+    if (fox.gait === 'Loco_Walk' && d > 1.6) fox.gait = 'Trot';
+    else if (fox.gait === 'Trot' && d < 0.8) fox.gait = 'Loco_Walk';
+    gait = fox.gait;
   }
 
   if (target) {
     tmpV.set(target.x - root.position.x, 0, target.z - root.position.z);
     const dist = tmpV.length();
-    const yaw = Math.atan2(tmpV.x, tmpV.z);
-    let diff = yaw - root.rotation.y;
+    let diff = Math.atan2(tmpV.x, tmpV.z) - root.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    root.rotation.y += diff * Math.min(1, dt * 6);
+    // يستدير بسرعة محدودة ويتقدّم باتجاه رأسه، فيرسم منحنى كالحيوان الحقيقي
+    const turnRate = gait === 'WalkSlow' ? 1.8 : 3.2;
+    root.rotation.y += THREE.MathUtils.clamp(diff, -turnRate * dt, turnRate * dt);
     playFox(gait);
-    if (Math.abs(diff) < 1.2) root.position.addScaledVector(tmpV.normalize(), Math.min(dist, speed * dt * (1 - Math.abs(diff) / 1.6)));
+    const pace = FOX_GAITS[gait] * Math.max(0.35, Math.cos(diff));
+    const speed = (fox.speeds[gait] || 0.5) * pace;
+    fox.actions[gait].timeScale = pace;
+    root.position.x += Math.sin(root.rotation.y) * speed * dt;
+    root.position.z += Math.cos(root.rotation.y) * speed * dt;
 
     // الكرة تُدفع حين يصلها الخطم وليس مركز الجسم
     const muzzleX = root.position.x + Math.sin(root.rotation.y) * FOX.length * 0.42;
@@ -1524,9 +1549,9 @@ function updateFox(dt) {
       tmpV.set(ball.position.x - root.position.x, 0, ball.position.z - root.position.z).normalize();
       tmpV.x += THREE.MathUtils.randFloatSpread(0.8); tmpV.z += THREE.MathUtils.randFloatSpread(0.8);
       kickBall(tmpV, THREE.MathUtils.randFloat(2.2, 3.6));
-      foxIdle(1.2, 3);
-    } else if (fox.state === 'wander' && dist < 0.1) {
-      foxIdle(1.5, 4);
+      foxIdle(2, 4.5);
+    } else if (fox.state === 'wander' && dist < 0.35) {
+      foxIdle(2.5, 5);
     }
   }
   root.position.x = THREE.MathUtils.clamp(root.position.x, PLAY.x0, PLAY.x1);
