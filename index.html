@@ -241,7 +241,7 @@ const ASSETS = LOW ? {
   rugNormal: 'assets/rug/rug_normal.jpg',
 };
 // نموذج فيراري F2008 الجاهز
-const CAR_MODEL = { url: LOW ? 'assets/models/ferrari_f2008_mobile.glb' : 'assets/models/ferrari_f2008.glb', scale: 0.88, center: -0.36 };
+const CAR_MODEL = { url: LOW ? 'assets/models/mercedes_w13_mobile.glb' : 'assets/models/mercedes_w13.glb', length: 4.02 };
 // ثعلب واقعي متحرك: "Animated Fox 3D Model" من AnimalMesh 3D على Sketchfab (CC-BY 4.0)
 const FOX = { url: LOW ? 'assets/models/fox_mobile.glb' : 'assets/models/fox.glb', length: 0.95 };
 // الجري الحقيقي (~6.5 م/ث) أسرع من الغرفة، فالمطاردة بهرولة مُبطّأة؛ السرعة والإيقاع يتغيّران معاً
@@ -1026,17 +1026,22 @@ function buildCarBed() {
 
   if (model) {
     // نموذج جاهز كما هو بدون فرشة: x للأمام
-    const S = CAR_MODEL.scale;
-    model.scale.setScalar(S);
-    model.rotation.y = Math.PI / 2;
-    model.position.set(-CAR_MODEL.center * S + 0.02, 0, 0);
+    // مقدمة المرسيدس باتجاه -Z في الملف، ثم +X داخل مجموعة السيارة.
+    model.rotation.y = -Math.PI / 2;
+    model.updateMatrixWorld(true);
+    const sourceBounds = new THREE.Box3().setFromObject(model);
+    model.scale.setScalar(CAR_MODEL.length / (sourceBounds.max.x - sourceBounds.min.x));
+    model.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(model);
+    const center = bounds.getCenter(new THREE.Vector3());
+    model.position.set(0.02 - center.x, -bounds.min.y + 0.005, -center.z);
     model.traverse(o => {
       if (!o.isMesh) return;
       o.castShadow = true; o.receiveShadow = true;
       for (const m of [].concat(o.material)) { if (m.isMeshStandardMaterial) reflective.push(m); }
     });
     car.add(model);
-    rainLight = add(new THREE.BoxGeometry(0.02, 0.04, 0.08), new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff1020, emissiveIntensity: 2 }), (-2.32 - CAR_MODEL.center) * S + 0.02, 0.3, 0);
+    rainLight = add(new THREE.BoxGeometry(0.02, 0.04, 0.08), new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff1020, emissiveIntensity: 2 }), -CAR_MODEL.length / 2 + 0.15, 0.23, 0);
     rainLight.castShadow = false;
   } else {
   // ---- الهيكل الرئيسي (من الخلف حتى رأس المقدمة) ----
