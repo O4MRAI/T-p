@@ -1,6 +1,6 @@
 # غرفة تشرين 📚
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/import?s=https%3A%2F%2Fgithub.com%2FO4MRAI%2FT-p)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/O4MRAI/T-p)
 
 غرفة ثلاثية الأبعاد (Three.js) لشخص يحب الكتب: أربع مكتبات خشبية مليئة بالكتب، نافذة على ليلة مقمرة، كرسي قراءة، مصباح وشمعة، وسرير على شكل سيارة فورمولا.
 
