@@ -39,4 +39,4 @@ Verified in headless Chromium with the application's Three.js 0.160.0 imports se
 
 ## Arabic typography update
 
-Bundled IBM Plex Sans Arabic (400/500/600) and Noto Naskh Arabic (400/700) as local WOFF2 files with their OFL licenses. Confirmed both font families load successfully with `document.fonts.check`, inspected desktop and mobile renders, checked mobile horizontal overflow, and exercised the writing form with the new typography. Google Fonts is no longer requested by the page.
+Bundled Alexandria (400/500/600/700) and Aref Ruqaa (400/700) as local WOFF2 files with their OFL licenses. Verified font loading, inspected desktop and mobile renders, checked mobile horizontal overflow, and exercised the writing form with the updated typography. Google Fonts is no longer requested by the page. The final choice follows the owner's feedback on the preview: stronger geometric lettering, clearer weights and contrast, and a Ruqaa signature.

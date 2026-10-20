@@ -1,6 +1,6 @@
 :root { --world-accent:#dfbe82; }
 [hidden] { display:none !important; }
-.world-screen {position:fixed;inset:0;z-index:60;background:radial-gradient(ellipse at 30% 10%,#423222,#100e0cf5 70%);overflow:auto;color:#eee3ce;font-family:"IBM Plex Sans Arabic",sans-serif;}
+.world-screen {position:fixed;inset:0;z-index:60;background:radial-gradient(ellipse at 30% 10%,#423222,#100e0cf5 70%);overflow:auto;color:#eee3ce;font-family:"Alexandria",sans-serif;}
 .world-screen button,.world-screen input,.world-screen textarea,.world-screen select,#world-bar button {font:inherit;}
 .world-screen button,#world-bar button {cursor:pointer;}
 .world-screen button:focus-visible,.world-screen input:focus-visible,.world-screen textarea:focus-visible,.world-screen select:focus-visible,#world-bar button:focus-visible{outline:2px solid var(--world-accent);outline-offset:4px;}
@@ -12,7 +12,7 @@
 .world-screen input,.world-screen textarea,.world-screen select {width:100%;padding:12px;background:#0b0a0880;border:1px solid #dfc99830;border-radius:8px;color:#f3e6cc;}
 .world-screen textarea {min-height:150px;line-height:1.9;resize:vertical;}
 .world-screen label {display:block;margin:12px 0 7px;color:#cfc3ab;}
-.world-screen h1,.world-screen h2,.world-screen h3 {font-family:"Noto Naskh Arabic",serif;margin:0;font-weight:400;}
+.world-screen h1,.world-screen h2,.world-screen h3 {font-family:"Alexandria",serif;margin:0;font-weight:400;}
 .world-screen h1 {font-size:clamp(36px,5vw,58px);line-height:1.4;}
 .world-screen p {line-height:1.9;}
 .world-screen .eyebrow {font-size:12px;letter-spacing:2px;color:var(--world-accent);}
@@ -21,8 +21,8 @@
 .world-paper {position:relative;width:min(660px,100%);padding:clamp(28px,6vw,65px);color:#3d2a1c;background:linear-gradient(115deg,#e5d0a2,#f1e4c5 45%,#d9bd89);box-shadow:0 25px 100px #0008;clip-path:polygon(1% 0,98% 1%,100% 17%,99% 34%,100% 61%,98% 99%,76% 100%,45% 99%,1% 100%,0 78%,1% 47%,0 20%);text-align:center;}
 .world-paper::before {content:'';position:absolute;inset:14px;border:1px solid #85683e55;pointer-events:none;}
 .world-paper .eyebrow,.world-paper .muted {color:#72583b;}
-.world-paper .dedication {font-family:"Noto Naskh Arabic",serif;font-size:18px;margin:12px 0 30px;}
-.world-paper blockquote {margin:20px 0;font:23px/2.1 "Noto Naskh Arabic",serif;}
+.world-paper .dedication {font-family:"Alexandria",serif;font-size:18px;margin:12px 0 30px;}
+.world-paper blockquote {margin:20px 0;font:23px/2.1 "Alexandria",serif;}
 .world-symbols {letter-spacing:12px;color:#80603e;font-size:22px;}
 .leaf-enter {background:transparent;border:0;color:#865b24;font-size:54px!important;display:block;margin:20px auto 0;min-width:80px;min-height:80px;}
 .leaf-enter span {display:inline-block;animation:leafSway 5s ease-in-out infinite;}
@@ -96,9 +96,9 @@
 .world-wrap {max-width:1330px;padding:0 64px 45px;}
 .world-masthead {height:108px;border-bottom:1px solid #c4b07d23;margin:0;}
 .world-brand {display:flex;align-items:center;gap:14px;}
-.brand-seal {width:46px;height:54px;border:1px solid #b8a26e72;border-radius:24px 24px 4px 4px;display:grid;place-items:center;font:32px "Noto Naskh Arabic",serif;color:#c5b182;}
-.brand-name {font:29px/1.4 "Noto Naskh Arabic",serif;display:block;color:#e7e2d2;}
-.world-brand small {font:8px/1.8 "IBM Plex Sans Arabic",sans-serif;letter-spacing:3px;color:#9b947f;display:block;}
+.brand-seal {width:46px;height:54px;border:1px solid #b8a26e72;border-radius:24px 24px 4px 4px;display:grid;place-items:center;font:32px "Alexandria",serif;color:#c5b182;}
+.brand-name {font:29px/1.4 "Alexandria",serif;display:block;color:#e7e2d2;}
+.world-brand small {font:8px/1.8 "Alexandria",sans-serif;letter-spacing:3px;color:#9b947f;display:block;}
 .masthead-links {display:flex;align-items:center;gap:28px;font-size:14px;color:#9e9f90;}
 .masthead-links .active {color:#ccb984;}
 .masthead-divider {width:1px;height:18px;background:#c4b07d35;}
@@ -108,11 +108,11 @@
 .hero-copy {position:relative;z-index:1;width:65%;}
 .luxury-hero .eyebrow {display:flex;gap:12px;align-items:center;letter-spacing:0;font-size:12px;color:#b7a883;}
 .gold-line {height:1px;width:30px;background:#a48b5c;}
-.luxury-hero h1 {font:clamp(44px,4.7vw,65px)/1.35 "Noto Naskh Arabic",serif;letter-spacing:-1px;margin:20px 0 18px;color:#eae7db;}
+.luxury-hero h1 {font:clamp(44px,4.7vw,65px)/1.35 "Alexandria",serif;letter-spacing:-1px;margin:20px 0 18px;color:#eae7db;}
 .luxury-hero h1 em {color:#c9b581;font-style:normal;}
 .luxury-hero p {font-size:15px;line-height:1.9;color:#979c8e;}
-.hero-meta {display:flex;align-items:center;gap:22px;margin-top:28px;color:#d0bd90;font-family:"Noto Naskh Arabic",serif;font-size:26px;}
-.hero-meta small {font:11px "IBM Plex Sans Arabic",sans-serif;color:#8d9485;margin-right:8px;}
+.hero-meta {display:flex;align-items:center;gap:22px;margin-top:28px;color:#d0bd90;font-family:"Alexandria",serif;font-size:26px;}
+.hero-meta small {font:11px "Alexandria",sans-serif;color:#8d9485;margin-right:8px;}
 .hero-meta i {width:1px;height:24px;background:#ad9c7133;}
 .hero-art {width:320px;height:320px;position:relative;flex:none;margin-left:24px;opacity:.85;direction:ltr;}
 .art-orbit {position:absolute;border:1px solid #b4a26c24;border-radius:50%;left:4%;top:4%;width:92%;height:92%;}
@@ -125,12 +125,12 @@
 .book-one {left:75px;transform:rotate(-13deg);height:112px;background:linear-gradient(90deg,#1a201c,#374139);}
 .book-two {left:128px;bottom:64px;transform:rotate(-2deg);}
 .book-three {left:183px;transform:rotate(12deg);height:139px;background:linear-gradient(90deg,#242119,#463d2b);}
-.art-caption {position:absolute;bottom:5px;text-align:center;width:100%;font:18px "Noto Naskh Arabic",serif;color:#b3a486;}
-.art-caption span {display:block;font:7px "IBM Plex Sans Arabic",sans-serif;letter-spacing:3px;margin-top:7px;color:#777f71;}
+.art-caption {position:absolute;bottom:5px;text-align:center;width:100%;font:18px "Alexandria",serif;color:#b3a486;}
+.art-caption span {display:block;font:7px "Alexandria",sans-serif;letter-spacing:3px;margin-top:7px;color:#777f71;}
 .collection-toolbar {border-top:1px solid #c4b07d23;display:flex;align-items:center;justify-content:space-between;padding:30px 0 20px;gap:20px;}
 .collection-toolbar .eyebrow {font-size:10px;letter-spacing:1px;color:#888d7d;}
-.collection-toolbar h2 {font:29px "Noto Naskh Arabic",serif;margin-top:5px;color:#e4e1d4;}
-.collection-toolbar h2 span {font:12px "IBM Plex Sans Arabic",sans-serif;color:#727969;margin-right:12px;}
+.collection-toolbar h2 {font:29px "Alexandria",serif;margin-top:5px;color:#e4e1d4;}
+.collection-toolbar h2 span {font:12px "Alexandria",sans-serif;color:#727969;margin-right:12px;}
 .search-wrap {position:relative;width:260px;color:#b2a17b;}
 .search-wrap>span {position:absolute;right:15px;top:10px;font-size:25px;line-height:1;}
 .search-wrap .world-search {border:1px solid #a7a48e26;background:#191d1750;border-radius:7px;padding:13px 44px 13px 16px;font-size:12px;}
@@ -148,9 +148,9 @@
 .section-card .section-symbol {width:42px;height:42px;display:grid;place-items:center;border:1px solid #c1b77c27;border-radius:9px;margin:0;background:#b09c5e08;color:var(--card-color);}
 .section-symbol svg {width:25px;height:25px;}
 .card-type {font-size:10px;color:#929780;}
-.section-number {top:28px;left:25px;font:11px "IBM Plex Sans Arabic",sans-serif;letter-spacing:2px;color:#727a67;}
-.section-card h2 {font:26px/1.35 "Noto Naskh Arabic",serif;color:#e6e2d1;}
-.section-card p {font:13px/1.8 "IBM Plex Sans Arabic",sans-serif;color:#929b86;margin:10px 0 23px;max-width:95%;}
+.section-number {top:28px;left:25px;font:11px "Alexandria",sans-serif;letter-spacing:2px;color:#727a67;}
+.section-card h2 {font:26px/1.35 "Alexandria",serif;color:#e6e2d1;}
+.section-card p {font:13px/1.8 "Alexandria",sans-serif;color:#929b86;margin:10px 0 23px;max-width:95%;}
 .card-footer {margin-top:auto;display:flex;justify-content:space-between;align-items:center;width:100%;border-top:1px solid #c1b17e19;padding:13px 0;color:#bfa975;}
 .card-footer small {font-size:11px;margin:0;color:#bca878;}
 .card-arrow {font-size:19px;color:#a9986c;}
@@ -167,7 +167,7 @@
 .world-dialog-shell {background:#080b07d9;}
 .world-section-head {padding:36px 0 30px;border-color:#c4b07d25;}
 #world-section .world-top {height:90px;margin:0;border-bottom:1px solid #c4b07d23;}
-#world-section h1 {font-family:"Noto Naskh Arabic",serif;color:#e6ddc7;font-size:50px;}
+#world-section h1 {font-family:"Alexandria",serif;color:#e6ddc7;font-size:50px;}
 .world-audio {border-color:#b4b18a24;background:#bec29504;color:#b4b99e;font-size:13px;}
 .entry-card {border-color:#b5b28c25;background:linear-gradient(135deg,#252d2150,#171d1450);border-radius:9px;padding:25px;}
 .entry-card h3 {color:#dfd9c3;}.entry-card p{color:#a4ae96;}
@@ -186,7 +186,7 @@
 .w-arrow {display:inline-block;width:16px;height:16px;vertical-align:middle;flex:none;}
 .card-arrow .w-arrow {transform:rotate(-90deg);width:17px;height:17px;}
 /* Arabic typography: locally bundled, with full Arabic shaping and diacritics. */
-.world-screen {font-family:'IBM Plex Sans Arabic',sans-serif;line-height:1.7;}
+.world-screen {font-family:'Alexandria',sans-serif;line-height:1.7;}
 .luxury-hero h1 {letter-spacing:0;line-height:1.5;}
 .world-screen .eyebrow {letter-spacing:0;}
 .world-screen .brand-name {font-weight:700;}
@@ -194,4 +194,26 @@
 .world-screen .muted {line-height:1.95;}
 .world-screen .wbtn {line-height:1.6;}
 .world-paper blockquote {line-height:2.1;}
-.world-brand small,.art-caption span {font-family:'IBM Plex Sans Arabic',sans-serif;}
+.world-brand small,.art-caption span {font-family:'Alexandria',sans-serif;}
+/* Distinctive geometric Arabic, with Ruqaa reserved for the signature. */
+.world-screen {font-family:Alexandria,sans-serif;}
+.world-screen h1,.world-screen h2,.world-screen h3 {font-family:Alexandria,sans-serif;}
+.world-screen .brand-name,.world-paper h1 {font-family:'Aref Ruqaa',serif;font-weight:700;}
+.world-screen .brand-name {font-size:31px;line-height:1.5;}
+.luxury-hero h1 {font-size:clamp(38px,4vw,53px);font-weight:500;line-height:1.8;letter-spacing:-.5px;}
+.luxury-hero h1 em {font-weight:600;color:#d5bc83;}
+.luxury-hero p {font-size:15px;color:#b5bba9;line-height:2.1;}
+.section-card h2 {font-size:21px;font-weight:500;line-height:1.85;}
+.section-card p {color:#b0b8a2;font-size:13px;}
+.card-type {color:#9fa88f;}
+.collection-toolbar h2 {font-size:25px;font-weight:500;line-height:1.9;}
+.hero-meta {font-size:24px;}
+.world-dialog h2 {font-size:25px;font-weight:500;line-height:1.8;}
+#world-section h1 {font-family:Alexandria,sans-serif;font-size:40px;font-weight:500;line-height:1.8;}
+.world-paper h1 {font-size:58px;}
+.world-paper blockquote {font-family:'Aref Ruqaa',serif;font-size:25px;line-height:2.1;}
+.entry-card h3 {font-size:22px;font-weight:500;line-height:1.9;}
+.world-screen .muted {color:#abb49d;}
+.world-paper .muted {color:#72583b;}
+@media(max-width:800px){.luxury-hero h1{font-size:43px}}
+@media(max-width:500px){.world-screen .brand-name{font-size:27px}.luxury-hero h1{font-size:30px;line-height:1.9;letter-spacing:-.4px}.luxury-hero p{font-size:12px;line-height:2.2;max-width:91%}.section-card h2{font-size:16px;line-height:1.9}.section-card p{font-size:11px}.collection-toolbar h2{font-size:21px}.hero-meta{font-size:21px}.hero-meta small{font-size:9px}.world-paper h1{font-size:49px}#world-section h1{font-size:29px}.world-dialog h2{font-size:23px}.entry-card h3{font-size:20px}}

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>هسيس تشرين — عالمك الصغير</title>
-<link rel="preload" href="assets/fonts/ibm-plex-sans-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/fonts/noto-naskh-arabic-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/alexandria-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/aref-ruqaa-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/fonts/fonts.css">
 <link rel="stylesheet" href="assets/world/world.css">
 <style>
@@ -22,22 +22,22 @@
     --cover: #6b1d1d;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ui); font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ui); font-family: "Alexandria", system-ui, sans-serif; }
   #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
   /* ---------- شاشة التحميل ---------- */
   #loader { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 50; transition: opacity .8s ease; }
   #loader.done { opacity: 0; pointer-events: none; }
-  #loader h1 { font-family: "Noto Naskh Arabic", serif; color: var(--gold); font-size: clamp(32px, 6vw, 56px); margin: 0 0 8px; text-align: center; }
+  #loader h1 { font-family: "Aref Ruqaa", serif; color: var(--gold); font-size: clamp(32px, 6vw, 56px); margin: 0 0 8px; text-align: center; }
   #loader p { margin: 0; color: var(--ui-dim); text-align: center; }
 
   /* ---------- واجهة الغرفة ---------- */
-  #title { position: fixed; top: 16px; right: 16px; font-family: "Noto Naskh Arabic", serif; font-size: 28px; color: var(--gold); text-shadow: 0 2px 12px rgba(0,0,0,.7); pointer-events: none; z-index: 5; }
+  #title { position: fixed; top: 16px; right: 16px; font-family: "Aref Ruqaa", serif; font-size: 28px; color: var(--gold); text-shadow: 0 2px 12px rgba(0,0,0,.7); pointer-events: none; z-index: 5; }
   #hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel); backdrop-filter: blur(6px); padding: 10px 18px; border-radius: 999px; font-size: 14px; color: var(--ui-dim); white-space: nowrap; z-index: 5; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
   #hint b { color: var(--ui); font-weight: 500; }
-  #tooltip { position: fixed; pointer-events: none; z-index: 6; background: var(--panel); backdrop-filter: blur(6px); border: 1px solid rgba(227,194,122,.35); padding: 6px 12px; border-radius: 8px; font-family: "Noto Naskh Arabic", serif; font-size: 17px; color: var(--ui); transform: translate(-50%, calc(-100% - 14px)); opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  #tooltip { position: fixed; pointer-events: none; z-index: 6; background: var(--panel); backdrop-filter: blur(6px); border: 1px solid rgba(227,194,122,.35); padding: 6px 12px; border-radius: 8px; font-family: "Aref Ruqaa", serif; font-size: 17px; color: var(--ui); transform: translate(-50%, calc(-100% - 14px)); opacity: 0; transition: opacity .15s; white-space: nowrap; }
   #tooltip.show { opacity: 1; }
-  #tooltip small { display: block; font-family: "IBM Plex Sans Arabic", sans-serif; font-size: 12px; color: var(--gold); }
+  #tooltip small { display: block; font-family: "Alexandria", sans-serif; font-size: 12px; color: var(--gold); }
   body.hovering #scene { cursor: pointer; }
 
   /* عصا التحكم للمشي على الجوال */
@@ -52,10 +52,10 @@
   #reader.open { opacity: 1; pointer-events: auto; }
 
   .reader-top { width: min(1100px, 100%); display: flex; align-items: center; gap: 10px; }
-  #bookTitle { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px dashed rgba(227,194,122,.4); color: var(--gold); font-family: "Noto Naskh Arabic", serif; font-size: clamp(22px, 3.4vw, 32px); padding: 2px 4px; outline: none; text-align: center; }
+  #bookTitle { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px dashed rgba(227,194,122,.4); color: var(--gold); font-family: "Aref Ruqaa", serif; font-size: clamp(22px, 3.4vw, 32px); padding: 2px 4px; outline: none; text-align: center; }
   #bookTitle:focus { border-bottom-color: var(--gold); }
 
-  .btn { background: rgba(243,230,204,.08); border: 1px solid rgba(227,194,122,.35); color: var(--ui); border-radius: 10px; padding: 8px 14px; font: 500 15px "IBM Plex Sans Arabic", sans-serif; cursor: pointer; transition: background .15s, border-color .15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn { background: rgba(243,230,204,.08); border: 1px solid rgba(227,194,122,.35); color: var(--ui); border-radius: 10px; padding: 8px 14px; font: 500 15px "Alexandria", sans-serif; cursor: pointer; transition: background .15s, border-color .15s; display: inline-flex; align-items: center; gap: 6px; }
   .btn:hover:not(:disabled) { background: rgba(227,194,122,.18); border-color: var(--gold); }
   .btn:disabled { opacity: .35; cursor: default; }
   .btn.icon { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 20px; }
@@ -66,16 +66,16 @@
   .page.p1 { border-radius: 6px 2px 2px 6px; box-shadow: inset -24px 0 30px -18px rgba(80,50,20,.45); } /* الصفحة اليسرى */
   .single .page.p0 { border-radius: 6px; box-shadow: inset 0 0 30px -10px rgba(80,50,20,.35); }
   .single .page.p1 { display: none; }
-  .page textarea { flex: 1; width: 100%; border: none; resize: none; outline: none; padding: 28px 34px 8px; font-family: "Noto Naskh Arabic", serif; font-size: 20px; line-height: 34px; color: var(--ink); direction: rtl;
+  .page textarea { flex: 1; width: 100%; border: none; resize: none; outline: none; padding: 28px 34px 8px; font-family: "Aref Ruqaa", serif; font-size: 20px; line-height: 34px; color: var(--ink); direction: rtl;
     background: repeating-linear-gradient(to bottom, transparent 0 33px, var(--line) 33px 34px); background-attachment: local; background-position: 0 22px; }
   .page textarea::placeholder { color: rgba(43,29,16,.35); font-style: italic; }
-  .page .num { text-align: center; padding: 4px 0 10px; font-family: "Noto Naskh Arabic", serif; color: rgba(43,29,16,.55); font-size: 15px; }
+  .page .num { text-align: center; padding: 4px 0 10px; font-family: "Aref Ruqaa", serif; color: rgba(43,29,16,.55); font-size: 15px; }
   .crease { width: 2px; background: linear-gradient(to bottom, rgba(0,0,0,.15), rgba(0,0,0,.35), rgba(0,0,0,.15)); }
   .single .crease { display: none; }
 
   /* غلاف يفتح عند فتح الكتاب */
   .cover { position: absolute; top: 0; bottom: 0; left: 0; width: 50%; transform-origin: right center; background: var(--cover); border-radius: 10px 0 0 10px; display: grid; place-items: center; backface-visibility: hidden; z-index: 4; box-shadow: inset 0 0 0 2px rgba(227,194,122,.35), inset 0 0 0 10px var(--cover), inset 0 0 0 11px rgba(227,194,122,.55); }
-  .cover span { font-family: "Noto Naskh Arabic", serif; color: var(--gold); font-size: clamp(24px, 3.5vw, 40px); text-align: center; padding: 0 24px; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+  .cover span { font-family: "Aref Ruqaa", serif; color: var(--gold); font-size: clamp(24px, 3.5vw, 40px); text-align: center; padding: 0 24px; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
   .single .cover { width: 100%; border-radius: 10px; }
   #reader.open .cover { animation: openCover 1s .15s cubic-bezier(.55,.05,.35,1) forwards; }
   @keyframes openCover { to { transform: rotateY(-180deg); visibility: hidden; } }
@@ -661,7 +661,7 @@ function drawBookTexture(ctx, data) {
   ctx.direction = 'rtl';
   const maxLen = data.style === 2 ? TEX_H - 124 : TEX_H - 64;
   let size = 30;
-  do { ctx.font = `700 ${size}px Noto Naskh Arabic, serif`; size--; } while (ctx.measureText(data.title).width > maxLen && size > 10);
+  do { ctx.font = `700 ${size}px Aref Ruqaa, serif`; size--; } while (ctx.measureText(data.title).width > maxLen && size > 10);
   ctx.fillText(data.title, 0, 2);
   ctx.restore();
 
@@ -935,11 +935,11 @@ function buildCarBed() {
     ctx.translate(W * 0.83, H * 0.5);
     ctx.rotate(-Math.PI / 2);
     ctx.fillStyle = '#f4f4f4'; ctx.beginPath(); ctx.ellipse(0, 0, 70, 52, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#111'; ctx.font = '900 76px IBM Plex Sans Arabic, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#111'; ctx.font = '900 76px Alexandria, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('07', 0, 6);
     ctx.restore();
     // كتابة جانبية على المقدمة (اليمين واليسار)
-    ctx.font = '700 64px "Noto Naskh Arabic", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+    ctx.font = '700 64px "Aref Ruqaa", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
     ctx.fillText('سريع كالخيال', W * 0.72, H * 0.73);
     ctx.save(); ctx.translate(W * 0.72, H * 0.27); ctx.rotate(Math.PI); ctx.fillText('سريع كالخيال', 0, 0); ctx.restore();
   });
@@ -952,7 +952,7 @@ function buildCarBed() {
     ctx.fillStyle = '#f4f4f4';
     ctx.beginPath(); ctx.moveTo(0, H * 0.6); ctx.lineTo(W, H * 0.56); ctx.lineTo(W, H * 0.6); ctx.lineTo(0, H * 0.64); ctx.fill();
     ctx.beginPath(); ctx.moveTo(0, H * 0.4); ctx.lineTo(W, H * 0.44); ctx.lineTo(W, H * 0.4); ctx.lineTo(0, H * 0.36); ctx.fill();
-    ctx.font = '700 70px "Noto Naskh Arabic", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+    ctx.font = '700 70px "Aref Ruqaa", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
     ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 6;
     ctx.fillText('فريق القرّاء', W * 0.5, H * 0.76);
     ctx.save(); ctx.translate(W * 0.5, H * 0.24); ctx.rotate(Math.PI); ctx.fillText('فريق القرّاء', 0, 0); ctx.restore();
@@ -999,7 +999,7 @@ function buildCarBed() {
     ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.setLineDash([10, 8]); ctx.lineWidth = 2;
     for (let y = 96; y < H; y += 192) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W - s * 4 - 60, y); ctx.stroke(); }
     ctx.setLineDash([]);
-    ctx.font = '900 150px IBM Plex Sans Arabic, Arial, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '900 150px Alexandria, Arial, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.save(); ctx.translate(W * 0.42, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('07', 0, 0); ctx.restore();
   });
 
@@ -1088,7 +1088,7 @@ function buildCarBed() {
   finGeo.translate(0, 0, -0.006);
   add(finGeo, white);
   const numTex = textCanvas(256, 128, (ctx, W, H) => {
-    ctx.font = '900 96px IBM Plex Sans Arabic, Arial, sans-serif'; ctx.fillStyle = '#c4141a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '900 96px Alexandria, Arial, sans-serif'; ctx.fillStyle = '#c4141a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('07', W / 2, H / 2 + 6);
   });
   for (const s of [1, -1]) {
@@ -1195,7 +1195,7 @@ function buildCarBed() {
   const plateTex = textCanvas(256, 256, (ctx, W, H) => {
     ctx.fillStyle = '#c4141a'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, H * 0.55); ctx.lineTo(W, H); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = '900 64px IBM Plex Sans Arabic, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('07', W * 0.5, H * 0.38);
+    ctx.fillStyle = '#fff'; ctx.font = '900 64px Alexandria, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('07', W * 0.5, H * 0.38);
     ctx.fillStyle = '#d4af37'; ctx.fillRect(0, H * 0.48, W, 6);
   });
   const plateMat = new THREE.MeshPhysicalMaterial({ map: plateTex, roughness: 0.3, clearcoat: 1 });
@@ -1234,7 +1234,7 @@ function buildCarBed() {
     ctx.strokeStyle = '#d61c1c'; ctx.lineWidth = 16;
     ctx.beginPath(); ctx.arc(0, 0, R * 0.9, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, R * 0.8, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#e8e8e8'; ctx.font = '900 46px IBM Plex Sans Arabic, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#e8e8e8'; ctx.font = '900 46px Alexandria, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const words = ['SOFT', 'RACING', 'SOFT', 'RACING'];
     words.forEach((word, k) => {
       const base = (k / words.length) * Math.PI * 2;
@@ -1364,7 +1364,7 @@ function buildRacingDecor() {
     ctx.quadraticCurveTo(300, 140, 220, 160); ctx.quadraticCurveTo(110, 190, 120, 300); ctx.closePath();
     ctx.stroke();
     ctx.strokeStyle = '#c4141a'; ctx.lineWidth = 4; ctx.stroke();
-    ctx.fillStyle = '#d4af37'; ctx.font = '700 46px "Noto Naskh Arabic", serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#d4af37'; ctx.font = '700 46px "Aref Ruqaa", serif'; ctx.textAlign = 'center';
     ctx.fillText('جائزة الأحلام الكبرى', W / 2, 480);
     ctx.fillStyle = '#c4141a'; ctx.beginPath(); ctx.arc(140, 400, 12, 0, Math.PI * 2); ctx.fill();
   });
@@ -1595,7 +1595,7 @@ function buildCornerMarkers() {
       ctx.beginPath(); ctx.roundRect(5, 5, w - 10, h - 10, 28); ctx.fill();
       ctx.strokeStyle = section.color; ctx.lineWidth = 3; ctx.stroke();
       ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = section.color; ctx.font = '500 43px IBM Plex Sans Arabic, sans-serif';
+      ctx.fillStyle = section.color; ctx.font = '500 43px Alexandria, sans-serif';
       ctx.fillText(section.name + '  ' + section.icon, w / 2, h / 2, w - 35);
     });
     const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: true, transparent: true }));
@@ -1888,7 +1888,7 @@ function clampInRoom(v, margin) {
 async function init() {
   try {
     await Promise.race([
-      Promise.all([document.fonts.load('500 30px "IBM Plex Sans Arabic"'), document.fonts.load('700 30px "Noto Naskh Arabic"')]),
+      Promise.all([document.fonts.load('500 30px "Alexandria"'), document.fonts.load('700 30px "Aref Ruqaa"')]),
       new Promise(r => setTimeout(r, 3000)),
     ]);
   } catch { /* نكمل بخط احتياطي */ }
