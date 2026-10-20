@@ -44,3 +44,7 @@ Bundled Alexandria (400/500/600/700) and Aref Ruqaa (400/700) as local WOFF2 fil
 ## Antique reference redesign
 
 Restyled the opening, index, cards, dialogs, forms, reading entries, tasks and journal in parchment and sepia, following the owner's antique reference. Added a compressed, purpose-generated hero artwork and a lightweight local paper-grain SVG. Confirmed bundled font loading, desktop/mobile rendering, no horizontal overflow at 390 px, and writing form behavior; reran the section and content interaction checks after replacing the CSS.
+
+## Reference layout and working dashboard
+
+Matched the reference's narrow composition and sequence: cloud collage, four featured paper cards, quill writing desk, room/description pair, hourglass ledger, interest strip and footer. Added a disclosure for the other nine corners; filtering and search still cover all thirteen. Re-ran protected gates and content interaction checks with the disclosure. Verified a quick note opens the correct gated corner, appears in its collection, updates the home ledger, and is escaped as text; checked interest links and the room preview action. Inspected full-layout and mobile screenshots.

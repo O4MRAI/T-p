@@ -9,6 +9,7 @@ const date = () => new Date().toLocaleDateString('ar',{year:'numeric',month:'sho
 const newId = () => crypto.randomUUID();
 let returnFocus = null, dialogReturnFocus = null, toastTimer;
 let category = 'all';
+let archiveOpen = false;
 const root = document.createElement('div');
 root.id='world-ui';
 root.innerHTML = `
@@ -17,13 +18,16 @@ root.innerHTML = `
 </div>
 <div id="world-bar"><button id="open-map" aria-label="افتح فهرس الأركان">❦ أركان تشرين</button><button id="show-intro" aria-label="العودة إلى ورقة البداية">🍂</button></div>
 <section id="world-map" class="world-screen" hidden aria-labelledby="map-title"><div class="world-wrap">
-  <div class="antique-ornament ornament-key" aria-hidden="true"><svg viewBox="0 0 100 200"><g fill="none" stroke="currentColor" stroke-width="3"><path d="M45 65v116h19v-13H53v-13h12v-12H45"/><circle cx="45" cy="40" r="24"/><circle cx="45" cy="40" r="15"/><path d="M45 25v30M30 40h30M34 29l22 22m0-22L34 51"/></g></svg></div><div class="antique-ornament ornament-clock" aria-hidden="true"><svg viewBox="0 0 140 190"><g fill="none" stroke="currentColor"><path d="M59 36V24h22v12" stroke-width="5"/><ellipse cx="70" cy="16" rx="16" ry="12" stroke-width="3"/><circle cx="70" cy="105" r="58" stroke-width="5"/><circle cx="70" cy="105" r="49" stroke-width="1.5"/><path d="M70 62v7m0 73v7m-43-44h7m73 0h7M41 76l5 5m48 48 5 5M41 134l5-5m48-48 5-5M70 77v28l24 15" stroke-width="3"/><circle cx="70" cy="105" r="3"/></g></svg></div>
+  <img class="reference-prop prop-key" src="assets/world/prop-key.webp" alt="" aria-hidden="true"><img class="reference-prop prop-postcards" src="assets/world/prop-postcards.webp" alt="" aria-hidden="true"><img class="reference-prop prop-watch" src="assets/world/prop-watch.webp" alt="" aria-hidden="true"><img class="reference-prop prop-books" src="assets/world/prop-books.webp" alt="" aria-hidden="true"><div class="paper-script script-left" aria-hidden="true">بين ورقةٍ وورقة…<br>تنامُ حكاية<br>وتستيقظ أخرى</div>
   <header class="world-top world-masthead"><div class="header-note"><span>رسائل، وكتب، وأشياء عزيزة</span><small>منذ أوّل ورقة خريف</small></div><div class="world-brand"><span class="brand-flourish" aria-hidden="true">❧</span><div><span class="brand-name">هسيس تشرين</span><small>حكاياتٌ لا يطالها الغبار</small></div><span class="brand-flourish" aria-hidden="true">☙</span></div><button class="wbtn quiet" id="back-room">مفتاح الغرفة <span aria-hidden="true">🗝</span></button></header>
   <div class="category-tabs paper-navigation" role="group" aria-label="تصفية الأركان"><button data-category="all" aria-pressed="true">كل الحكايات</button><button data-category="writing" aria-pressed="false">حبر وورق</button><button data-category="books" aria-pressed="false">خزانة الكتب</button><button data-category="collection" aria-pressed="false">ذاكرة وشغف</button><button data-category="daily" aria-pressed="false">تفاصيل صغيرة</button></div>
-  <div class="world-heading antique-hero"><div class="hero-copy"><div class="eyebrow">إلى ثاني أكسيد الكربون</div><h1 id="map-title" tabindex="-1">بعضُ الأشياء، لا تصبحُ قديمة…<br><em>تصبحُ أثمن.</em></h1><p class="muted">وللكلمات والكتب والذكريات، صنعتُ هذا المكان.</p></div><img class="antique-hero-image" src="assets/world/antique-hero.webp" alt="كتب عتيقة وريشة حبر وساعة جيب ومفتاح، وثعلب نائم بينها" width="1200" height="800" fetchpriority="high"><div class="hero-inscription"><span aria-hidden="true">❦</span> ثلاثة عشر مفتاحًا… وعالمٌ واحد يشبهك <span aria-hidden="true">❦</span></div></div>
-  <div class="collection-toolbar"><div><span class="eyebrow">افتح بابًا، واتبع الحكاية</span><h2>خزانةُ الأشياء العزيزة</h2></div><div class="search-wrap"><span aria-hidden="true">⌕</span><input id="section-search" class="world-search" type="search" placeholder="عن أيّ حكاية تبحث؟" aria-label="ابحث عن ركن"></div></div>
-  <div id="sections-grid" class="world-grid"></div>
-  <footer class="world-bottom"><div class="world-companion"><span class="fox-avatar" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="m6 7 12 6h4L34 7l-3 20-11 8L9 27 6 7Z" stroke="currentColor" stroke-width="1.3"/><path d="m7 9 7 14 6 10 6-10 7-14M12 22l5 1m6 0 5-1m-11 5h6l-3 4-3-4Z" stroke="currentColor" stroke-width="1.3"/></svg></span><span>أنا هنا، أيّ باب سنفتح اليوم؟</span></div><span class="muted">مسودة للتجربة · الإضافات تختفي عند تحديث الصفحة</span></footer>
+  <div class="world-heading antique-hero"><h1 id="map-title" tabindex="-1" class="visually-hidden">هسيس تشرين — خزانة الأشياء العزيزة</h1><img class="antique-hero-image" src="assets/world/cloud-cabinet.webp" alt="عالم صغير من الكتب والأعمدة والمرسيدس والثعلب فوق السحاب" width="1200" height="641" fetchpriority="high"><div class="cloud-search"><span>عن أيّ حكاية تبحث؟</span><div class="search-wrap"><input id="section-search" class="world-search" type="search" placeholder="اسم ركن أو ذكرى…" aria-label="ابحث عن ركن"></div><button class="wbtn primary" id="find-story">ابحث</button><small>❦ اتبع الأثر</small></div></div>
+  <div class="collection-toolbar"><h2>مفاتيحُ الحكاية</h2><p>لكلّ شيءٍ عزيز، بابٌ صغير</p></div><div id="sections-grid"></div>
+  <section class="reference-panel writing-desk" aria-labelledby="desk-title"><img class="desk-quill" src="assets/world/prop-quill.webp" alt="" aria-hidden="true"><div class="desk-copy"><span class="eyebrow">على ضفاف من حبر</span><h2 id="desk-title">ورقةٌ لم تُكتب بعد</h2><p>للكلمات التي تنتظر، ولرسالةٍ لم تجد طريقها… اترك هنا أول سطر.</p><form id="quick-note-form"><label class="visually-hidden" for="quick-note">اكتب أول سطر في حكايتك</label><textarea id="quick-note" rows="2" placeholder="في هذه اللحظة، أودّ أن أكتب…" required maxlength="2000"></textarea><div class="desk-bottom"><button class="wbtn primary" type="submit">ابدأ الحكاية</button><span>حبرٌ مؤقت… إلى أن تكتمل الحكاية</span></div></form></div></section>
+  <section class="reference-duo"><div class="why-tishreen"><h2>لماذا هذا المكان؟</h2><ul><li><span>❧</span><div><h3>ما لا يشبه سواه</h3><p>ثلاثة عشر ركنًا للكتب والذكريات وما تحبّ.</p></div></li><li><span>✒</span><div><h3>أثرٌ على ورقة</h3><p>نصوصك واقتباساتك وقصاصاتك، في مكان واحد.</p></div></li><li><span>☾</span><div><h3>رفيقٌ من خريف</h3><p>ثعلبٌ صغير، وغرفةٌ تتسع للحكايات.</p></div></li></ul></div><div class="room-invitation"><h2>من داخل الحكاية</h2><button id="preview-room" aria-label="ادخل غرفة تشرين"><img src="assets/world/room-preview.webp" alt="معاينة حقيقية لغرفة تشرين الثلاثية الأبعاد" width="640" height="450" loading="lazy"><span class="room-play" aria-hidden="true">▷</span><span class="room-caption">افتح باب الغرفة</span></button></div></section>
+  <section class="reference-panel story-ledger" aria-labelledby="ledger-title"><div class="ledger-column"><h2 id="ledger-title">أشياءٌ بدأت هنا</h2><dl><div><dt>على رفوف الكتب</dt><dd id="ledger-books">٠</dd></div><div><dt>على صفحاتي</dt><dd id="ledger-notes">٠</dd></div><div><dt>خطواتي الصغيرة</dt><dd id="ledger-tasks">٠</dd></div></dl></div><img class="ledger-hourglass" src="assets/world/prop-hourglass.webp" alt="" aria-hidden="true"><div class="ledger-column ledger-latest"><h2>آخرُ ما تركتُه</h2><div id="ledger-latest"><p>لم تترك أثرًا بعد… البداية لك.</p></div></div></section>
+  <div class="paper-interests"><h2>أشياءُ أحبّها</h2><div><button data-open="library">❧ الكتب</button><button data-open="shawqi">الشعر</button><button data-open="spacetoon">سبيستون</button><button data-open="mercedes">مرسيدس</button><button data-open="milan">ميلان</button><button data-open="2052">الإسبريسو ☕</button></div></div>
+  <footer class="world-bottom"><span class="footer-signature">هسيس تشرين</span><div class="world-companion"><span class="fox-avatar" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="m6 7 12 6h4L34 7l-3 20-11 8L9 27 6 7Z" stroke="currentColor" stroke-width="1.3"/><path d="m7 9 7 14 6 10 6-10 7-14M12 22l5 1m6 0 5-1m-11 5h6l-3 4-3-4Z" stroke="currentColor" stroke-width="1.3"/></svg></span><span>أنا هنا، أيّ باب سنفتح اليوم؟</span></div><span class="muted">مسودة للتجربة · الإضافات تختفي عند تحديث الصفحة</span></footer>
 </div></section>
 <section id="world-section" class="world-screen" hidden aria-labelledby="section-title"><div class="world-wrap">
   <header class="world-top"><button class="wbtn quiet" id="back-map">→ كل الأركان</button><div class="world-companion"><span class="fox-avatar" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="m6 7 12 6h4L34 7l-3 20-11 8L9 27 6 7Z" stroke="currentColor" stroke-width="1.3"/><path d="m7 9 7 14 6 10 6-10 7-14M12 22l5 1m6 0 5-1m-11 5h6l-3 4-3-4Z" stroke="currentColor" stroke-width="1.3"/></svg></span><span id="fox-mood"></span></div><button class="wbtn" id="section-room">الغرفة <svg class="w-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></button></header>
@@ -98,8 +102,23 @@ function icon(id) {
 }
 function renderMap(filter=$('#section-search')?.value || '') {
   const found=sections.filter(s=>normalize(s.name+' '+s.desc).includes(normalize(filter)) && (category==='all'||(category==='daily'?['tasks','journal'].includes(s.type):s.type===category)));
-  $('#sections-grid').innerHTML=found.length ? found.map(s=>`<button class="section-card" data-section="${s.id}" style="--card-color:${s.color}"><span class="section-number">${String(sections.indexOf(s)+1).padStart(2,'0')}</span><div class="card-topline"><span class="section-symbol" aria-hidden="true">${icon(s.id)}</span><span class="card-type">${({writing:'حبر وورق',books:'بين الكتب',collection:'ذاكرة وشغف',tasks:'خطوات صغيرة',journal:'مساحة حرة'})[s.type]}</span></div><h2>${s.name}</h2><p>${s.desc}</p><div class="card-footer"><small>${state.unlocked.has(s.id)||!s.pass?'عد إلى الحكاية':'مفتاح الحكاية'}</small><span class="card-arrow" aria-hidden="true"><svg class="w-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></div></button>`).join('') : '<p class="empty-state">لا يوجد ركن بهذا الاسم.</p>';
+  const card=s=>`<button class="section-card" data-section="${s.id}" style="--card-color:${s.color}"><span class="section-number">${String(sections.indexOf(s)+1).padStart(2,'0')}</span><div class="card-topline"><span class="section-symbol" aria-hidden="true">${icon(s.id)}</span><span class="card-type">${({writing:'حبر وورق',books:'بين الكتب',collection:'ذاكرة وشغف',tasks:'خطوات صغيرة',journal:'مساحة حرة'})[s.type]}</span></div><h2>${s.name}</h2><p>${s.desc}</p><div class="card-footer"><small>${state.unlocked.has(s.id)||!s.pass?'عد إلى الحكاية':'مفتاح الحكاية'}</small><span aria-hidden="true">❧</span></div></button>`;
+  if(!filter&&category==='all') {
+    const main=['ink','library','yusr','journal'];
+    $('#sections-grid').innerHTML=`<div class="featured-grid">${main.map(id=>card(sections.find(s=>s.id===id))).join('')}</div><details id="archive-corners" class="corner-archive" ${archiveOpen?'open':''}><summary>باقي مفاتيح الحكاية <span>٩ أركان أخرى</span></summary><div class="archive-grid">${found.filter(s=>!main.includes(s.id)).map(card).join('')}</div></details>`;
+    $('#archive-corners').ontoggle=e=>{archiveOpen=e.target.open};
+  } else $('#sections-grid').innerHTML=found.length?`<div class="archive-grid filtered-grid">${found.map(card).join('')}</div>`:'<p class="empty-state">لا يوجد ركن بهذا الاسم.</p>';
   for(const el of $('#sections-grid').querySelectorAll('[data-section]'))el.onclick=()=>openSection(el.dataset.section);
+  renderLedger();
+}
+function renderLedger() {
+  const all=Object.values(state.data).flat();
+  const books=sections.filter(s=>s.type==='books').flatMap(s=>state.data[s.id]);
+  const notes=sections.filter(s=>s.type==='writing').flatMap(s=>state.data[s.id]);
+  $('#ledger-books').textContent=books.length.toLocaleString('ar');
+  $('#ledger-notes').textContent=notes.length.toLocaleString('ar');
+  $('#ledger-tasks').textContent=state.data.yusr.filter(e=>e.done||(e.habit&&e.count>=8)).length.toLocaleString('ar');
+  $('#ledger-latest').innerHTML=all.length?all.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,3).map(e=>`<p><span>${escape(e.title)}</span><small>${escape(e.date)}</small></p>`).join(''):'<p>لم تترك أثرًا بعد… البداية لك.</p>';
 }
 function openSection(id,bypass=false) {
   const s=sections.find(s=>s.id===id);if(!s)return;
@@ -158,7 +177,7 @@ function editEntry(id) {
       event.preventDefault();const title=$('#entry-title').value.trim();if(!title){$('#entry-error').textContent='اكتب عنوانًا أولًا.';return}
       const f=$('#entry-file')?.files[0];
       if(f&&!/^(image|audio|video)\//.test(f.type)){$('#entry-error').textContent='اختر صورة أو ملف صوت أو فيديو.';return}
-      const next={...e,id:e.id||newId(),title,body:$('#entry-body').value,date:e.date||date()};
+      const next={...e,id:e.id||newId(),title,body:$('#entry-body').value,date:e.date||date(),createdAt:e.createdAt||Date.now()};
       if(s.type==='books'){next.status=$('#entry-status').value;next.rating=Number($('#entry-rating').value);next.quote=$('#entry-quote').value}
       if(s.type==='tasks'){next.habit=$('#entry-habit').value==='habit';next.required=$('#entry-required').value==='yes'}
       if(f){release(e.url);next.url=mediaUrl(f);next.kind=f.type.split('/')[0]}
@@ -211,6 +230,11 @@ $('#back-room').onclick=()=>{emitSection();setScreen('room')};
 $('#section-room').onclick=()=>{emitSection(state.current,state.current?.id==='yusr'&&isSleeping());setScreen('room')};
 $('#back-map').onclick=()=>{renderMap();setScreen('map')};
 $('#section-search').oninput=e=>renderMap(e.target.value);
+$('#find-story').onclick=()=>{renderMap();$('.collection-toolbar').scrollIntoView({behavior:'smooth',block:'start'})};
+$('#preview-room').onclick=()=>{emitSection();setScreen('room')};
+for(const link of root.querySelectorAll('[data-open]'))link.onclick=()=>openSection(link.dataset.open);
+$('#quick-note-form').onsubmit=e=>{e.preventDefault();const body=$('#quick-note').value.trim();if(!body)return;state.data.ink.unshift({id:newId(),title:body.split('\n')[0].slice(0,80),body,date:date(),createdAt:Date.now()});$('#quick-note').value='';renderLedger();openSection('ink');toast('تركتَ أول أثر على الورقة')};
+
 for(const tab of root.querySelectorAll('[data-category]'))tab.onclick=()=>{category=tab.dataset.category;for(const t of root.querySelectorAll('[data-category]'))t.setAttribute('aria-pressed',String(t===tab));renderMap();$('.collection-toolbar').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})};
 window.addEventListener('tishreen:open',e=>openSection(e.detail.id));
 window.addEventListener('keydown',e=>{
