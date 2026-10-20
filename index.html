@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>غرفة تشرين</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<title>هسيس تشرين — عالمك الصغير</title>
+<link rel="preload" href="assets/fonts/alexandria-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/aref-ruqaa-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/world/world.css">
 <style>
   :root {
     --bg: #120c08;
@@ -21,7 +22,7 @@
     --cover: #6b1d1d;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ui); font-family: "Tajawal", system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ui); font-family: "Alexandria", system-ui, sans-serif; }
   #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
   /* ---------- شاشة التحميل ---------- */
@@ -34,9 +35,9 @@
   #title { position: fixed; top: 16px; right: 16px; font-family: "Aref Ruqaa", serif; font-size: 28px; color: var(--gold); text-shadow: 0 2px 12px rgba(0,0,0,.7); pointer-events: none; z-index: 5; }
   #hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel); backdrop-filter: blur(6px); padding: 10px 18px; border-radius: 999px; font-size: 14px; color: var(--ui-dim); white-space: nowrap; z-index: 5; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
   #hint b { color: var(--ui); font-weight: 500; }
-  #tooltip { position: fixed; pointer-events: none; z-index: 6; background: var(--panel); backdrop-filter: blur(6px); border: 1px solid rgba(227,194,122,.35); padding: 6px 12px; border-radius: 8px; font-family: "Amiri", serif; font-size: 17px; color: var(--ui); transform: translate(-50%, calc(-100% - 14px)); opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  #tooltip { position: fixed; pointer-events: none; z-index: 6; background: var(--panel); backdrop-filter: blur(6px); border: 1px solid rgba(227,194,122,.35); padding: 6px 12px; border-radius: 8px; font-family: "Aref Ruqaa", serif; font-size: 17px; color: var(--ui); transform: translate(-50%, calc(-100% - 14px)); opacity: 0; transition: opacity .15s; white-space: nowrap; }
   #tooltip.show { opacity: 1; }
-  #tooltip small { display: block; font-family: "Tajawal", sans-serif; font-size: 12px; color: var(--gold); }
+  #tooltip small { display: block; font-family: "Alexandria", sans-serif; font-size: 12px; color: var(--gold); }
   body.hovering #scene { cursor: pointer; }
 
   /* عصا التحكم للمشي على الجوال */
@@ -54,7 +55,7 @@
   #bookTitle { flex: 1; min-width: 0; background: transparent; border: none; border-bottom: 1px dashed rgba(227,194,122,.4); color: var(--gold); font-family: "Aref Ruqaa", serif; font-size: clamp(22px, 3.4vw, 32px); padding: 2px 4px; outline: none; text-align: center; }
   #bookTitle:focus { border-bottom-color: var(--gold); }
 
-  .btn { background: rgba(243,230,204,.08); border: 1px solid rgba(227,194,122,.35); color: var(--ui); border-radius: 10px; padding: 8px 14px; font: 500 15px "Tajawal", sans-serif; cursor: pointer; transition: background .15s, border-color .15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn { background: rgba(243,230,204,.08); border: 1px solid rgba(227,194,122,.35); color: var(--ui); border-radius: 10px; padding: 8px 14px; font: 500 15px "Alexandria", sans-serif; cursor: pointer; transition: background .15s, border-color .15s; display: inline-flex; align-items: center; gap: 6px; }
   .btn:hover:not(:disabled) { background: rgba(227,194,122,.18); border-color: var(--gold); }
   .btn:disabled { opacity: .35; cursor: default; }
   .btn.icon { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 20px; }
@@ -65,10 +66,10 @@
   .page.p1 { border-radius: 6px 2px 2px 6px; box-shadow: inset -24px 0 30px -18px rgba(80,50,20,.45); } /* الصفحة اليسرى */
   .single .page.p0 { border-radius: 6px; box-shadow: inset 0 0 30px -10px rgba(80,50,20,.35); }
   .single .page.p1 { display: none; }
-  .page textarea { flex: 1; width: 100%; border: none; resize: none; outline: none; padding: 28px 34px 8px; font-family: "Amiri", serif; font-size: 20px; line-height: 34px; color: var(--ink); direction: rtl;
+  .page textarea { flex: 1; width: 100%; border: none; resize: none; outline: none; padding: 28px 34px 8px; font-family: "Aref Ruqaa", serif; font-size: 20px; line-height: 34px; color: var(--ink); direction: rtl;
     background: repeating-linear-gradient(to bottom, transparent 0 33px, var(--line) 33px 34px); background-attachment: local; background-position: 0 22px; }
   .page textarea::placeholder { color: rgba(43,29,16,.35); font-style: italic; }
-  .page .num { text-align: center; padding: 4px 0 10px; font-family: "Amiri", serif; color: rgba(43,29,16,.55); font-size: 15px; }
+  .page .num { text-align: center; padding: 4px 0 10px; font-family: "Aref Ruqaa", serif; color: rgba(43,29,16,.55); font-size: 15px; }
   .crease { width: 2px; background: linear-gradient(to bottom, rgba(0,0,0,.15), rgba(0,0,0,.35), rgba(0,0,0,.15)); }
   .single .crease { display: none; }
 
@@ -105,9 +106,9 @@
 <body>
 <canvas id="scene"></canvas>
 
-<div id="loader"><div><h1>غرفة تشرين</h1><p>جارٍ ترتيب الكتب على الرفوف…</p></div></div>
+<div id="loader"><div><h1>هسيس تشرين</h1><p>جارٍ ترتيب الكتب على الرفوف…</p></div></div>
 
-<div id="title">غرفة تشرين</div>
+<div id="title">هسيس تشرين</div>
 <div id="hint"><b>اسحب</b> للتجوّل · <b>مرّر</b> للاقتراب · <b>اضغط على أي كتاب</b> لفتحه والكتابة فيه</div>
 <div id="tooltip"></div>
 <div id="joy" aria-label="عصا التحكم للمشي"><div id="joyKnob"></div></div>
@@ -144,6 +145,8 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { sections as worldSections } from './assets/world/sections.js';
+import './assets/world/world.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -658,7 +661,7 @@ function drawBookTexture(ctx, data) {
   ctx.direction = 'rtl';
   const maxLen = data.style === 2 ? TEX_H - 124 : TEX_H - 64;
   let size = 30;
-  do { ctx.font = `700 ${size}px Amiri, serif`; size--; } while (ctx.measureText(data.title).width > maxLen && size > 10);
+  do { ctx.font = `700 ${size}px Aref Ruqaa, serif`; size--; } while (ctx.measureText(data.title).width > maxLen && size > 10);
   ctx.fillText(data.title, 0, 2);
   ctx.restore();
 
@@ -932,7 +935,7 @@ function buildCarBed() {
     ctx.translate(W * 0.83, H * 0.5);
     ctx.rotate(-Math.PI / 2);
     ctx.fillStyle = '#f4f4f4'; ctx.beginPath(); ctx.ellipse(0, 0, 70, 52, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#111'; ctx.font = '900 76px Tajawal, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#111'; ctx.font = '900 76px Alexandria, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('07', 0, 6);
     ctx.restore();
     // كتابة جانبية على المقدمة (اليمين واليسار)
@@ -996,7 +999,7 @@ function buildCarBed() {
     ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.setLineDash([10, 8]); ctx.lineWidth = 2;
     for (let y = 96; y < H; y += 192) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W - s * 4 - 60, y); ctx.stroke(); }
     ctx.setLineDash([]);
-    ctx.font = '900 150px Tajawal, Arial, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '900 150px Alexandria, Arial, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.save(); ctx.translate(W * 0.42, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('07', 0, 0); ctx.restore();
   });
 
@@ -1085,7 +1088,7 @@ function buildCarBed() {
   finGeo.translate(0, 0, -0.006);
   add(finGeo, white);
   const numTex = textCanvas(256, 128, (ctx, W, H) => {
-    ctx.font = '900 96px Tajawal, Arial, sans-serif'; ctx.fillStyle = '#c4141a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '900 96px Alexandria, Arial, sans-serif'; ctx.fillStyle = '#c4141a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('07', W / 2, H / 2 + 6);
   });
   for (const s of [1, -1]) {
@@ -1192,7 +1195,7 @@ function buildCarBed() {
   const plateTex = textCanvas(256, 256, (ctx, W, H) => {
     ctx.fillStyle = '#c4141a'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, H * 0.55); ctx.lineTo(W, H); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = '900 64px Tajawal, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('07', W * 0.5, H * 0.38);
+    ctx.fillStyle = '#fff'; ctx.font = '900 64px Alexandria, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('07', W * 0.5, H * 0.38);
     ctx.fillStyle = '#d4af37'; ctx.fillRect(0, H * 0.48, W, 6);
   });
   const plateMat = new THREE.MeshPhysicalMaterial({ map: plateTex, roughness: 0.3, clearcoat: 1 });
@@ -1231,7 +1234,7 @@ function buildCarBed() {
     ctx.strokeStyle = '#d61c1c'; ctx.lineWidth = 16;
     ctx.beginPath(); ctx.arc(0, 0, R * 0.9, 0, Math.PI * 2); ctx.stroke();
     ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, R * 0.8, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#e8e8e8'; ctx.font = '900 46px Tajawal, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#e8e8e8'; ctx.font = '900 46px Alexandria, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const words = ['SOFT', 'RACING', 'SOFT', 'RACING'];
     words.forEach((word, k) => {
       const base = (k / words.length) * Math.PI * 2;
@@ -1581,6 +1584,38 @@ function buildLights() {
   scene.add(moon, moon.target);
 }
 
+// ---------- مداخل هسيس تشرين ----------
+const cornerMarkers = [];
+let worldOverlayOpen = true;
+let companionSleeping = false;
+function buildCornerMarkers() {
+  for (const section of worldSections) {
+    const texture = canvasTexture(640, 150, (ctx, w, h) => {
+      ctx.fillStyle = 'rgba(23,18,14,.93)';
+      ctx.beginPath(); ctx.roundRect(5, 5, w - 10, h - 10, 28); ctx.fill();
+      ctx.strokeStyle = section.color; ctx.lineWidth = 3; ctx.stroke();
+      ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = section.color; ctx.font = '500 43px Alexandria, sans-serif';
+      ctx.fillText(section.name + '  ' + section.icon, w / 2, h / 2, w - 35);
+    });
+    const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: true, transparent: true }));
+    marker.position.set(...section.pos); marker.scale.set(1.08, .253, 1);
+    marker.userData.sectionId = section.id;
+    cornerMarkers.push(marker); scene.add(marker);
+  }
+}
+window.addEventListener('tishreen:overlay', e => {
+  worldOverlayOpen = e.detail.open;
+  controls.enabled = !worldOverlayOpen && !reader.isOpen;
+  if (worldOverlayOpen) setHover(null);
+});
+window.addEventListener('tishreen:section', e => {
+  companionSleeping = !!e.detail.sleeping;
+  // The companion's room marker follows the active corner's colors.
+  for (const marker of cornerMarkers) marker.material.opacity = e.detail.id && marker.userData.sectionId !== e.detail.id ? .45 : 1;
+});
+function pickCorner() { return raycaster.intersectObjects(cornerMarkers, false)[0]?.object; }
+
 // ---------- التفاعل ----------
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -1615,17 +1650,30 @@ function setHover(mesh, e) {
 }
 
 canvas.addEventListener('pointermove', e => {
-  if (busy || reader.isOpen) return;
+  if (busy || reader.isOpen || worldOverlayOpen) return;
   if (e.pointerType === 'touch') return;
-  setHover(pickBook(e), e);
+  const book = pickBook(e);
+  const corner = pickCorner();
+  if (corner) {
+    setHover(null);
+    document.body.classList.add('hovering');
+    tooltip.textContent = 'افتح ' + worldSections.find(s => s.id === corner.userData.sectionId).name;
+    tooltip.style.left = e.clientX + 'px'; tooltip.style.top = e.clientY + 'px';
+    tooltip.classList.add('show');
+  } else setHover(book, e);
 });
 canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener('pointerup', e => {
-  if (!downAt || busy || reader.isOpen) return;
+  if (!downAt || busy || reader.isOpen || worldOverlayOpen) return;
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
   if (moved > 6) return;
   const mesh = pickBook(e);
+  const corner = pickCorner();
+  if (corner) {
+    window.dispatchEvent(new CustomEvent('tishreen:open', { detail: { id: corner.userData.sectionId } }));
+    return;
+  }
   // لمس الكرة يركلها بعيداً عن الكاميرا فيلحقها الثعلب
   if (fox && raycaster.intersectObject(fox.ball, false).length) {
     kickBall(tmpV.subVectors(fox.ball.position, camera.position), 4);
@@ -1791,7 +1839,7 @@ const reader = (() => {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
   addEventListener('keydown', e => {
-    if (!api.isOpen) return;
+    if (!api.isOpen || worldOverlayOpen) return;
     if (e.key === 'Escape') { e.preventDefault(); closeBook(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); flush(); }
     if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); go(1); }
@@ -1840,7 +1888,7 @@ function clampInRoom(v, margin) {
 async function init() {
   try {
     await Promise.race([
-      Promise.all([document.fonts.load('700 30px Amiri'), document.fonts.load('700 30px "Aref Ruqaa"')]),
+      Promise.all([document.fonts.load('500 30px "Alexandria"'), document.fonts.load('700 30px "Aref Ruqaa"')]),
       new Promise(r => setTimeout(r, 3000)),
     ]);
   } catch { /* نكمل بخط احتياطي */ }
@@ -1860,6 +1908,9 @@ async function init() {
   carBed = buildCarBed();
   buildRacingDecor();
   buildFox();
+  buildCornerMarkers();
+  controls.enabled = !worldOverlayOpen;
+  renderer.render(scene, camera);
 
   document.getElementById('loader').classList.add('done');
   renderer.setAnimationLoop(loop);
@@ -1869,6 +1920,7 @@ let carBed = null;
 let lastFrame = 0;
 const FRAME_MS = LOW ? 1000 / 40 : 0;
 function loop(now) {
+  if (worldOverlayOpen) { lastFrame = now; return; }
   if (now - lastFrame < FRAME_MS) return;
   const dt = Math.min(0.05, (now - (lastFrame || now)) / 1000);
   lastFrame = now;
@@ -1889,7 +1941,7 @@ function loop(now) {
   const f = 0.75 + Math.sin(now * 0.011) * 0.08 + Math.sin(now * 0.037) * 0.06 + Math.random() * 0.05;
   candleLight.intensity = f;
   candleFlame.scale.set(1, 0.9 + f * 0.2, 1);
-  updateFox(dt);
+  if (!companionSleeping) updateFox(dt);
   carBed.rainLight.material.emissiveIntensity = Math.floor(now / 450) % 2 ? 3 : 0.3;
 
   if (controls.enabled) {
