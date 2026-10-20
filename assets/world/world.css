@@ -209,3 +209,36 @@
 @media(min-width:800px) and (max-width:1050px){.antique-hero-image{margin-top:-20px;margin-bottom:-36px}.cloud-search{bottom:17px}.featured-grid .section-card{min-height:177px}.writing-desk{min-height:155px;padding-block:16px}.desk-copy>.eyebrow{display:none}.desk-copy h2{line-height:1.2}.desk-copy>p{line-height:1.6;margin:5px 0 7px}#quick-note{min-height:34px;font-size:10px;padding:4px 7px}.desk-bottom{margin-top:6px}.desk-bottom .wbtn{min-height:24px;font-size:7px}.reference-duo{margin-block:15px 18px}.room-invitation button img{height:100px}.prop-watch{top:850px}.prop-books{top:1080px}}
 @media(min-width:800px) and (max-width:1050px){.antique-hero-image{margin-top:10px}}
 @media(max-width:500px){.section-card p{font-size:10px}}
+
+/* Physical paper, a candlelit desk, and a bound journal. */
+#world-intro{background:#29190f url('./writing-table.webp') center/cover no-repeat;padding:42px 20px;background-attachment:fixed}
+.world-paper{background:url('./letter-paper.webp') center/100% 100% no-repeat;clip-path:none;box-shadow:none;filter:drop-shadow(5px 17px 18px #10090099);padding:65px 62px 55px;color:#493821}
+.world-paper::before{display:none}
+.world-paper h1{color:#533e28}.world-paper blockquote{font-size:25px;line-height:2.15;color:#503a25;text-shadow:0 1px #fff5}
+.world-paper .eyebrow,.world-paper .muted{color:#796045}
+.wax-seal{position:absolute;top:38px;left:30px;width:65px;height:65px;display:grid;place-items:center;border:5px double #9d493c;border-radius:47% 53% 44% 56%;font:700 19px 'Aref Ruqaa',serif;color:#da8c70;background:radial-gradient(circle at 32% 25%,#a84135,#6e211e 65%,#501513);box-shadow:inset 2px 2px 3px #ee9c6355,inset -2px -3px 4px #300c08,2px 5px 4px #42251255;transform:rotate(-14deg)}
+.section-card,.reference-panel{background-image:url('./letter-paper.webp');filter:drop-shadow(1px 4px 3px #60452333)}
+.reference-panel{padding:32px 36px}
+.paper-navigation{background-image:url('./map-engraving.svg'),url('./letter-paper.webp');background-size:auto 100%,100% 100%;background-position:center;background-repeat:no-repeat}
+.paper-navigation button{background:#f5ead4b3}
+.corner-archive{background:url('./map-engraving.svg') center top/100% auto no-repeat}
+.entry-card{background:#f3e7ce url('./letter-paper.webp') center/100% 100%;border:0;border-radius:2px;box-shadow:2px 5px 8px #5f45282b;padding:26px}
+.archive-cards .entry-card{border:6px solid #e3cf9d;box-shadow:3px 4px 0 #f1e5c8,5px 7px 0 #bda77b,6px 12px 15px #42301d33;transform:rotate(-.6deg)}
+.archive-cards .entry-card:nth-child(even){transform:rotate(.7deg)}
+.leather-cover{min-height:230px;margin:-12px -10px 20px;padding:25px 25px 25px 35px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(90deg,#140c08aa,transparent 7%,#bc8b5044 8%,transparent 11%),url('./paper-grain.svg'),linear-gradient(120deg,#67402d,#35221a 70%,#70482e);border:3px double #ad844b;border-left:12px solid #342218;border-radius:5px 9px 9px 5px;box-shadow:3px 3px 0 #d5bc8b,5px 5px 0 #664b2c,6px 9px 12px #36241055;color:#d9ba80}
+.leather-cover h3{color:#ead3a0;font-size:27px;margin:12px 0}.leather-cover>span{font-size:42px}.leather-cover small{font-size:10px;letter-spacing:1px}.leather-cover img{max-height:200px;width:auto;max-width:100%;border:2px solid #ac8854}
+.journal-tabs{display:flex;gap:5px;overflow:auto;padding:12px 18px 0;scrollbar-width:thin}
+.journal-tab{flex:none;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:13px 20px 17px;border:1px solid #9e8055;border-bottom:0;border-radius:9px 9px 0 0;color:#665036;background:#d0bd96 url('./letter-paper.webp') center/100% 100%;font-family:'Aref Ruqaa',serif!important;font-size:20px!important}
+.journal-tab[aria-pressed=true]{background-color:#f4e4bf;color:#3b2515;box-shadow:inset 0 4px #8a3b2e}
+.journal-binding{position:relative;padding:19px;background:linear-gradient(90deg,#24160f,#60402c 48%,#28180f 50%,#60402c 52%,#24160f);border:3px solid #5c3d25;border-radius:12px;box-shadow:0 12px 25px #36231355,inset 0 0 0 3px #947049}
+.journal-spread{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;direction:rtl}
+.journal-leaf{min-width:0;position:relative;padding:24px 14px 15px;background:url('./letter-paper.webp') center/100% 100%;box-shadow:inset 16px 0 25px -20px #2b190c;min-height:510px}
+.journal-leaf+ .journal-leaf{box-shadow:inset -16px 0 25px -20px #2b190c}
+.journal-leaf h3{text-align:center;font-size:23px;border-bottom:1px solid #9d80553a;padding:0 10px 12px;margin:0 15px}
+.journal-board{background:transparent;border:0;border-radius:0;box-shadow:none;min-height:340px;height:45vh;max-height:520px;touch-action:pan-y}
+.journal-board .world-empty{padding:45px 15px}.journal-board .world-empty h3{font-size:23px}
+.journal-item{background:#f1e4c6 url('./letter-paper.webp') center/100% 100%;font-size:20px;padding:15px;box-shadow:2px 5px 8px #4d301f44}
+.partner-item{cursor:default}.blank-page-note{text-align:center;color:#9e8562;padding:80px 15px;font:22px 'Aref Ruqaa',serif}
+.turn-page{display:flex!important;margin:0 auto;max-width:95%;font-size:11px!important}
+.binding-rings{position:absolute;top:25%;bottom:20%;left:calc(50% - 17px);width:34px;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0,transparent 80px,#382c21 81px,#bcac8b 84px,#e4d8c2 86px,#4e4030 89px,transparent 91px);filter:drop-shadow(0 3px 2px #0006)}
+@media(max-width:600px){#world-intro{padding:24px 10px;background-position:42% center}.world-paper{padding:65px 28px 40px}.world-paper blockquote{font-size:22px;line-height:2}.wax-seal{width:43px;height:43px;font-size:14px;top:25px;left:23px}.world-paper h1{font-size:44px}.reference-panel{padding:25px}.journal-binding{padding:8px}.journal-spread{grid-template-columns:1fr;gap:12px}.journal-leaf{min-height:420px;padding:22px 10px}.binding-rings{display:none}.journal-leaf+ .journal-leaf{border-top:4px double #95724d}.journal-tab{padding:9px 14px;font-size:18px!important}.journal-board{height:390px}.leather-cover{min-height:220px}}

@@ -48,3 +48,10 @@ Restyled the opening, index, cards, dialogs, forms, reading entries, tasks and j
 ## Reference layout and working dashboard
 
 Matched the reference's narrow composition and sequence: cloud collage, four featured paper cards, quill writing desk, room/description pair, hourglass ledger, interest strip and footer. Added a disclosure for the other nine corners; filtering and search still cover all thirteen. Re-ran protected gates and content interaction checks with the disclosure. Verified a quick note opens the correct gated corner, appears in its collection, updates the home ledger, and is escaped as text; checked interest links and the room preview action. Inspected full-layout and mobile screenshots.
+
+## Material and journal update
+- Verified exact owner-provided opening text and removal of the previous dedication.
+- Verified two-page journal, page tabs, switching and retaining scraps on both pages, drag/resize and new pages.
+- Verified leather book cover, image upload, reading filters, writing CRUD, all gates, habit counter, mobile fit and refresh reset.
+- Opening fox pointer/keyboard interaction and reduced-motion checks pass.
+- Desktop and mobile screenshots inspected; generated paper and walnut desk are local WebP assets.
