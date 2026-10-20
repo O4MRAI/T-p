@@ -137,6 +137,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const ROOM = { w: 10, d: 9, h: 4.2 };
 const WIN = { w: 1.2, h: 1.9, y: 2.15 };
@@ -215,15 +217,20 @@ const ASSETS = {
   floorRough: 'assets/floor/herringbone_parquet_rough.jpg',
   outside: 'assets/outside/shanghai_bund_night.jpg',
 };
+// نموذج فيراري F2008 الجاهز (أعلى الهيكل بين العجلات مقصوص لتجلس فيه الفرشة)
+const CAR_MODEL = { url: 'assets/models/ferrari_f2008.glb', scale: 0.88, cutY: 0.52, bedCenter: -0.36 };
 const T = {};
 function loadAssets() {
   const loader = new THREE.TextureLoader();
-  return Promise.all(Object.entries(ASSETS).map(([key, url]) => loader.loadAsync(url).then(tex => {
+  const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(CAR_MODEL.url)
+    .then(g => { T.carModel = g.scene; })
+    .catch(() => console.warn('تعذّر تحميل نموذج السيارة، سيُستخدم النموذج المرسوم'));
+  return Promise.all([gltf, ...Object.entries(ASSETS).map(([key, url]) => loader.loadAsync(url).then(tex => {
     tex.anisotropy = maxAniso;
     if (key === 'floorDiff' || key === 'outside') tex.colorSpace = THREE.SRGBColorSpace;
     if (key.startsWith('floor')) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(ROOM.w / 1.6, ROOM.d / 1.6); }
     T[key] = tex;
-  }).catch(() => console.warn('تعذّر تحميل', url))));
+  }).catch(() => console.warn('تعذّر تحميل', url)))]);
 }
 
 
@@ -976,6 +983,29 @@ function buildCarBed() {
     return m;
   };
 
+  const model = T.carModel;
+  // أبعاد الفرشة وارتفاعها حسب نوع السيارة
+  const BED = model ? { len: 1.95, wid: 1.18, y0: CAR_MODEL.cutY * CAR_MODEL.scale } : { len: 1.86, wid: 0.9, y0: 0.48 };
+  const dy = BED.y0 - 0.48;
+  let rainLight;
+
+  if (model) {
+    // نموذج جاهز: x للأمام كما في بقية السرير
+    const S = CAR_MODEL.scale;
+    model.scale.setScalar(S);
+    model.rotation.y = Math.PI / 2;
+    model.position.set(-CAR_MODEL.bedCenter * S + 0.02, 0, 0);
+    model.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = true; o.receiveShadow = true;
+      for (const m of [].concat(o.material)) { if (m.isMeshStandardMaterial) reflective.push(m); }
+    });
+    car.add(model);
+    // قاعدة كربونية تحت الفرشة تغطي حواف القص
+    add(new RoundedBoxGeometry(BED.len + 0.08, 0.04, BED.wid + 0.08, 2, 0.015), carbon, 0.02, BED.y0 - 0.005, 0);
+    rainLight = add(new THREE.BoxGeometry(0.02, 0.04, 0.08), new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff1020, emissiveIntensity: 2 }), (-2.32 - CAR_MODEL.bedCenter) * S + 0.02, 0.3, 0);
+    rainLight.castShadow = false;
+  } else {
   // ---- الهيكل الرئيسي (من الخلف حتى رأس المقدمة) ----
   add(loft([
     { x: -1.42, w: 0.16, h: 0.12, y: 0.33 },
@@ -1026,30 +1056,36 @@ function buildCarBed() {
     p.castShadow = false;
   }
 
+  }
+
   // ---- الفرشة والمفارش ----
-  add(new RoundedBoxGeometry(1.86, 0.17, 0.9, 4, 0.06), new THREE.MeshStandardMaterial({ map: quiltTex, roughness: 0.95 }), 0.02, 0.565, 0);
+  add(new RoundedBoxGeometry(BED.len, 0.17, BED.wid, 4, 0.06), new THREE.MeshStandardMaterial({ map: quiltTex, roughness: 0.95 }), 0.02, 0.565 + dy, 0);
+  if (!model) {
   // حواف قمرة القيادة حول الفرشة
   for (const s of [-1, 1]) add(new RoundedBoxGeometry(1.92, 0.24, 0.075, 4, 0.03), plainPaint, 0.02, 0.55, s * 0.48);
   add(new RoundedBoxGeometry(0.08, 0.24, 1.03, 4, 0.03), plainPaint, 0.98, 0.56, 0);
   // حافة سوداء ناعمة (مثل حافة القمرة)
   for (const s of [-1, 1]) add(new RoundedBoxGeometry(1.88, 0.03, 0.05, 2, 0.012), black, 0.02, 0.675, s * 0.47);
+  }
 
   // اللحاف مع طيّات
-  const duvetGeo = new THREE.PlaneGeometry(1.42, 0.98, 60, 30);
+  const duvetLen = BED.len * 0.76, duvetWid = BED.wid + 0.08;
+  const duvetX = 0.02 + BED.len / 2 - duvetLen / 2;
+  const duvetGeo = new THREE.PlaneGeometry(duvetLen, duvetWid, 60, 30);
   duvetGeo.rotateX(-Math.PI / 2);
   const dp = duvetGeo.attributes.position;
   for (let i = 0; i < dp.count; i++) {
     const x = dp.getX(i), z = dp.getZ(i);
-    const edge = Math.max(0, Math.abs(z) - 0.38) / 0.11;
+    const edge = Math.max(0, Math.abs(z) - (duvetWid / 2 - 0.11)) / 0.11;
     let y = 0.018 * Math.sin(x * 9 + z * 4) * Math.sin(z * 11) + 0.012 * Math.sin(x * 23 + 1.3) * (1 - edge);
     y += 0.03 * Math.exp(-((x + 0.1) ** 2) * 30) * Math.cos(z * 3); // انتفاخ خفيف في الوسط
     y -= edge * edge * 0.07;
     dp.setY(i, y);
   }
   duvetGeo.computeVertexNormals();
-  add(duvetGeo, new THREE.MeshStandardMaterial({ map: duvetTex, roughness: 0.92, side: THREE.DoubleSide }), 0.24, 0.665, 0).castShadow = false;
+  add(duvetGeo, new THREE.MeshStandardMaterial({ map: duvetTex, roughness: 0.92, side: THREE.DoubleSide }), duvetX, 0.665 + dy, 0).castShadow = false;
   // طرف الشرشف الأبيض المطوي
-  add(new RoundedBoxGeometry(0.14, 0.035, 0.94, 3, 0.015), new THREE.MeshStandardMaterial({ color: 0xf4f2ee, roughness: 0.95 }), -0.47, 0.672, 0);
+  add(new RoundedBoxGeometry(0.14, 0.035, duvetWid - 0.04, 3, 0.015), new THREE.MeshStandardMaterial({ color: 0xf4f2ee, roughness: 0.95 }), duvetX - duvetLen / 2, 0.672 + dy, 0);
 
   // مخدة منفوخة
   const pillowGeo = new RoundedBoxGeometry(0.34, 0.13, 0.66, 8, 0.065);
@@ -1060,12 +1096,13 @@ function buildCarBed() {
     pp.setY(i, y * f);
   }
   pillowGeo.computeVertexNormals();
-  const pillow = add(pillowGeo, new THREE.MeshStandardMaterial({ color: 0xf6f4ef, roughness: 0.95 }), -0.7, 0.715, 0.02);
+  const pillow = add(pillowGeo, new THREE.MeshStandardMaterial({ color: 0xf6f4ef, roughness: 0.95 }), 0.02 - BED.len / 2 + 0.24, 0.715 + dy, 0.02);
   pillow.rotation.set(0, 0.08, -0.12);
   // مخدة صغيرة على شكل خوذة/علم
-  const cush = add(new RoundedBoxGeometry(0.2, 0.06, 0.3, 6, 0.03), new THREE.MeshStandardMaterial({ color: 0xc4141a, roughness: 0.85 }), -0.52, 0.735, -0.2);
+  const cush = add(new RoundedBoxGeometry(0.2, 0.06, 0.3, 6, 0.03), new THREE.MeshStandardMaterial({ color: 0xc4141a, roughness: 0.85 }), 0.02 - BED.len / 2 + 0.42, 0.735 + dy, -0.2);
   cush.rotation.set(0.1, -0.5, -0.4);
 
+  if (!model) {
   // ---- البودات الجانبية ----
   for (const s of [-1, 1]) {
     const pod = add(loft([
@@ -1100,7 +1137,7 @@ function buildCarBed() {
   const diffTop = add(new THREE.BoxGeometry(0.36, 0.01, 0.74), carbon, -1.38, 0.17, 0);
   diffTop.rotation.z = 0.25;
   // ضوء المطر الخلفي
-  const rainLight = add(new THREE.BoxGeometry(0.02, 0.045, 0.09), new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff1020, emissiveIntensity: 2 }), -1.5, 0.4, 0);
+  rainLight = add(new THREE.BoxGeometry(0.02, 0.045, 0.09), new THREE.MeshStandardMaterial({ color: 0x330000, emissive: 0xff1020, emissiveIntensity: 2 }), -1.5, 0.4, 0);
   rainLight.castShadow = false;
 
   // ---- الجناح الخلفي ----
@@ -1230,6 +1267,7 @@ function buildCarBed() {
       add(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 16), rimMat, wd.x, wd.r, hubZ + s * 0.02).rotation.x = Math.PI / 2;
     }
   }
+  }
 
   // توهج أحمر خفيف تحت السيارة
   const glowTex = textCanvas(256, 128, (ctx, W, H) => {
@@ -1243,7 +1281,7 @@ function buildCarBed() {
   car.add(glow);
 
   // المقدمة باتجاه عمق الغرفة، والسرير بمحاذاة الجدار الأيمن
-  car.position.set(ROOM.w / 2 - 1.02, 0, 1.75);
+  car.position.set(ROOM.w / 2 - (model ? 0.92 : 1.02), 0, model ? 1.9 : 1.75);
   car.rotation.y = Math.PI / 2;
   scene.add(car);
 
@@ -1264,7 +1302,7 @@ function buildCarBed() {
   car.visible = false;
   cubeCam.update(renderer, scene);
   car.visible = true;
-  for (const m of reflective) { m.envMap = cubeRT.texture; m.envMapIntensity = 1.2; m.needsUpdate = true; }
+  for (const m of reflective) { m.envMap = cubeRT.texture; m.envMapIntensity = 1.1; m.needsUpdate = true; }
   // انعكاس خفيف للغرفة على الباركيه اللامع
   M.floor.envMap = cubeRT.texture; M.floor.envMapIntensity = 0.25; M.floor.needsUpdate = true;
 
@@ -1292,7 +1330,7 @@ function buildRacingDecor() {
     ctx.fillStyle = '#c4141a'; ctx.beginPath(); ctx.arc(140, 400, 12, 0, Math.PI * 2); ctx.fill();
   });
   const poster = new THREE.Group();
-  poster.position.set(ROOM.w / 2 - 0.02, 2.25, 1.75);
+  poster.position.set(ROOM.w / 2 - 0.02, 2.25, 1.9);
   poster.rotation.y = -Math.PI / 2;
   scene.add(poster);
   box(1.42, 0.98, 0.04, M.darkWood, 0, 0, 0, poster, false);
@@ -1302,7 +1340,7 @@ function buildRacingDecor() {
 
   // خوذة على الأرض قرب المقدمة
   const helmet = new THREE.Group();
-  helmet.position.set(ROOM.w / 2 - 2.05, 0, 0.35);
+  helmet.position.set(ROOM.w / 2 - 2.1, 0, 0.75);
   helmet.rotation.y = -0.9;
   scene.add(helmet);
   const shell = new THREE.Mesh(new THREE.SphereGeometry(0.15, 40, 30, 0, Math.PI * 2, 0, Math.PI * 0.68), new THREE.MeshPhysicalMaterial({ color: 0xf2f2f2, roughness: 0.25, clearcoat: 1 }));
