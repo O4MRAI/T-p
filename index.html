@@ -39,6 +39,13 @@
   #tooltip small { display: block; font-family: "Tajawal", sans-serif; font-size: 12px; color: var(--gold); }
   body.hovering #scene { cursor: pointer; }
 
+  /* عصا التحكم للمشي على الجوال */
+  #joy { position: fixed; left: calc(20px + env(safe-area-inset-left, 0px)); bottom: calc(64px + env(safe-area-inset-bottom, 0px)); width: 120px; height: 120px; border-radius: 50%; background: rgba(24,16,10,.45); border: 1px solid rgba(227,194,122,.35); backdrop-filter: blur(4px); z-index: 6; touch-action: none; display: none; }
+  #joy.show { display: block; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(227,194,122,.55); box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+  #lost { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: var(--bg); text-align: center; padding: 24px; }
+  #lost.show { display: grid; }
+
   /* ---------- القارئ (الكتاب المفتوح) ---------- */
   #reader { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px; background: radial-gradient(ellipse at center, rgba(20,12,6,.55), rgba(8,5,3,.88)); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity .35s ease; }
   #reader.open { opacity: 1; pointer-events: auto; }
@@ -103,6 +110,8 @@
 <div id="title">غرفة القارئ</div>
 <div id="hint"><b>اسحب</b> للتجوّل · <b>مرّر</b> للاقتراب · <b>اضغط على أي كتاب</b> لفتحه والكتابة فيه</div>
 <div id="tooltip"></div>
+<div id="joy" aria-label="عصا التحكم للمشي"><div id="joyKnob"></div></div>
+<div id="lost"><div><p>توقف عرض الغرفة لأن الجهاز احتاج ذاكرة أكثر.</p><button class="btn" onclick="location.reload()">أعد التحميل</button></div></div>
 
 <div id="reader" aria-hidden="true">
   <div class="reader-top">
@@ -169,15 +178,19 @@ const storage = {
 
 // ---------- المشهد ----------
 const canvas = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// وضع خفيف للجوال: دقة أقل، بدون ظلال، وصور أصغر حتى لا تنفد ذاكرة الرسوميات
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+const LOW = TOUCH || Math.min(screen.width, screen.height) < 820;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LOW, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, LOW ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = !LOW;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-const maxAniso = renderer.capabilities.getMaxAnisotropy();
+const maxAniso = Math.min(LOW ? 4 : 16, renderer.capabilities.getMaxAnisotropy());
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); document.getElementById('lost').classList.add('show'); });
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x120c08);
@@ -212,7 +225,14 @@ function canvasTexture(w, h, draw, repeat) {
 // ---------- الخامات ----------
 // صور حقيقية: أرضية باركيه وبانوراما ليلية لمدينة شنغهاي من Poly Haven (CC0)،
 // وسجادة أناضولية من القرن السابع عشر من متحف المتروبوليتان (ملكية عامة)
-const ASSETS = {
+const ASSETS = LOW ? {
+  floorDiff: 'assets/mobile/floor_diff.jpg',
+  floorNor: 'assets/mobile/floor_nor_gl.jpg',
+  floorRough: 'assets/mobile/floor_rough.jpg',
+  outside: 'assets/mobile/outside.jpg',
+  rugColor: 'assets/mobile/rug_color.webp',
+  rugNormal: 'assets/mobile/rug_normal.jpg',
+} : {
   floorDiff: 'assets/floor/herringbone_parquet_diff.jpg',
   floorNor: 'assets/floor/herringbone_parquet_nor_gl.jpg',
   floorRough: 'assets/floor/herringbone_parquet_rough.jpg',
@@ -221,7 +241,7 @@ const ASSETS = {
   rugNormal: 'assets/rug/rug_normal.jpg',
 };
 // نموذج فيراري F2008 الجاهز
-const CAR_MODEL = { url: 'assets/models/ferrari_f2008.glb', scale: 0.88, center: -0.36 };
+const CAR_MODEL = { url: LOW ? 'assets/models/ferrari_f2008_mobile.glb' : 'assets/models/ferrari_f2008.glb', scale: 0.88, center: -0.36 };
 const T = {};
 // يُقرأ الملف كبيانات خام ثم يُحلَّل، ويدعم نسخة base64 النصية للأماكن التي لا تقدّم ملفات .glb
 async function loadCarModel() {
@@ -559,6 +579,7 @@ function randomColor() {
 
 // صندوق واحد مشترك، كل وجه يأخذ جزءاً من نسيج الكتاب: الكعب | الغلاف | الورق
 const TEX_W = 96, TEX_H = 256;
+const BOOK_RES = LOW ? 0.5 : 1;
 const bookGeo = (() => {
   const g = new THREE.BoxGeometry(1, 1, 1);
   const uv = g.attributes.uv;
@@ -581,6 +602,7 @@ function drawBookTexture(ctx, data) {
   const light = l > 42;
   const ink = light ? '#2a1a0e' : '#e3c27a';
   const SW = 64;
+  ctx.setTransform(BOOK_RES, 0, 0, BOOK_RES, 0, 0);
   ctx.clearRect(0, 0, TEX_W, TEX_H);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, TEX_W, TEX_H);
@@ -659,7 +681,7 @@ function createBook(parent, { id, w, h, d, color, style, title, pullable = true 
     pages: Array.isArray(saved?.pages) ? saved.pages : [],
   };
   const c = document.createElement('canvas');
-  c.width = TEX_W; c.height = TEX_H;
+  c.width = TEX_W * BOOK_RES; c.height = TEX_H * BOOK_RES;
   const ctx = c.getContext('2d');
   drawBookTexture(ctx, data);
   const tex = new THREE.CanvasTexture(c);
@@ -750,10 +772,12 @@ function buildBookcase(idx, x, z, rotY) {
   const bar = cyl(0.02, 0.02, W * 0.6, M.brass, 0, H + 0.12, D / 2 + 0.1, g, 12);
   bar.rotation.z = Math.PI / 2;
   cyl(0.012, 0.012, 0.14, M.brass, 0, H + 0.06, D / 2 + 0.03, g, 8).rotation.x = Math.PI / 3;
-  const spot = new THREE.SpotLight(0xffd29a, 9, 5, Math.PI / 3.2, 0.7, 1.6);
-  spot.position.set(0, H + 0.1, D / 2 + 0.25);
-  spot.target.position.set(0, H * 0.35, 0);
-  g.add(spot, spot.target);
+  if (!LOW) {
+    const spot = new THREE.SpotLight(0xffd29a, 9, 5, Math.PI / 3.2, 0.7, 1.6);
+    spot.position.set(0, H + 0.1, D / 2 + 0.25);
+    spot.target.position.set(0, H * 0.35, 0);
+    g.add(spot, spot.target);
+  }
   return g;
 }
 
@@ -1290,7 +1314,7 @@ function buildCarBed() {
   scene.add(bedLight, bedLight.target);
 
   // انعكاسات حقيقية للغرفة على طلاء السيارة
-  const cubeRT = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+  const cubeRT = new THREE.WebGLCubeRenderTarget(LOW ? 128 : 256, { type: THREE.HalfFloatType });
   const cubeCam = new THREE.CubeCamera(0.05, 20, cubeRT);
   cubeCam.position.set(car.position.x - 0.4, 1.1, car.position.z);
   scene.add(cubeCam);
@@ -1361,7 +1385,7 @@ function buildRacingDecor() {
 
 // ---------- الإضاءة ----------
 function buildLights() {
-  scene.add(new THREE.HemisphereLight(0xffe2b8, 0x2a1a10, 0.35));
+  scene.add(new THREE.HemisphereLight(0xffe2b8, 0x2a1a10, LOW ? 0.6 : 0.35));
   const key = new THREE.SpotLight(0xffd6a0, 38, 0, Math.PI / 2.6, 0.9, 1.7);
   key.position.set(0.5, ROOM.h - 0.05, 1.4);
   key.target.position.set(0, 0, -0.6);
@@ -1655,7 +1679,12 @@ async function init() {
 }
 
 let carBed = null;
+let lastFrame = 0;
+const FRAME_MS = LOW ? 1000 / 40 : 0;
 function loop(now) {
+  if (now - lastFrame < FRAME_MS) return;
+  const dt = Math.min(0.05, (now - (lastFrame || now)) / 1000);
+  lastFrame = now;
   updateTweens(now);
   // إذا كان الكتاب مفتوحاً ولا توجد حركة، نوفّر المعالج
   if (reader.isOpen && !tweens.length) return;
@@ -1676,6 +1705,7 @@ function loop(now) {
   carBed.rainLight.material.emissiveIntensity = Math.floor(now / 450) % 2 ? 3 : 0.3;
 
   if (controls.enabled) {
+    walk(dt);
     controls.update();
     clampInRoom(camera.position, 0);
     clampInRoom(controls.target, 0.1);
@@ -1683,7 +1713,41 @@ function loop(now) {
   renderer.render(scene, camera);
 }
 
+// ---------- عصا التحكم: المشي في الغرفة على الجوال ----------
+const joy = { el: document.getElementById('joy'), knob: document.getElementById('joyKnob'), x: 0, y: 0, id: null };
+if (TOUCH) {
+  joy.el.classList.add('show');
+  document.getElementById('hint').innerHTML = '<b>اسحب</b> للنظر · <b>العصا</b> للمشي · <b>المس كتاباً</b> لفتحه';
+}
+function setJoy(e) {
+  const r = joy.el.getBoundingClientRect(), R = r.width / 2;
+  let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+  const len = Math.hypot(dx, dy);
+  if (len > R) { dx *= R / len; dy *= R / len; }
+  joy.x = dx / R; joy.y = dy / R;
+  joy.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+}
+joy.el.addEventListener('pointerdown', e => { joy.id = e.pointerId; joy.el.setPointerCapture(e.pointerId); setJoy(e); });
+joy.el.addEventListener('pointermove', e => { if (e.pointerId === joy.id) setJoy(e); });
+for (const ev of ['pointerup', 'pointercancel']) {
+  joy.el.addEventListener(ev, e => { if (e.pointerId !== joy.id) return; joy.id = null; joy.x = joy.y = 0; joy.knob.style.transform = ''; });
+}
+const fwd = new THREE.Vector3(), side = new THREE.Vector3(), step = new THREE.Vector3();
+function walk(dt) {
+  if (!joy.x && !joy.y) return;
+  camera.getWorldDirection(fwd);
+  fwd.y = 0; fwd.normalize();
+  side.crossVectors(fwd, camera.up).normalize();
+  step.copy(fwd).multiplyScalar(-joy.y).addScaledVector(side, joy.x).multiplyScalar(1.6 * dt);
+  camera.position.add(step);
+  controls.target.add(step);
+}
+
+// شاشة الجوال الطولية تحتاج زاوية رؤية أوسع
+const fitFov = () => { camera.fov = innerWidth < innerHeight ? 72 : 55; camera.updateProjectionMatrix(); };
+fitFov();
 addEventListener('resize', () => {
+  fitFov();
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
