@@ -139,6 +139,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const ROOM = { w: 10, d: 9, h: 4.2 };
+const WIN = { w: 1.2, h: 1.9, y: 2.15 };
+const OUTSIDE_ROT = -0.94;
 const CASE = { w: 3, h: 3.6, d: 0.5, t: 0.05, levels: 5 };
 const STORAGE_PREFIX = 'bookroom:v1:';
 const MAX_PAGES = 300;
@@ -206,31 +208,24 @@ function canvasTexture(w, h, draw, repeat) {
 }
 
 // ---------- الخامات ----------
-const floorTex = canvasTexture(1024, 1024, (ctx, w, h) => {
-  const rows = 8, rh = h / rows;
-  for (let r = 0; r < rows; r++) {
-    let x = -Math.random() * w * 0.5;
-    while (x < w) {
-      const len = rr(w * 0.35, w * 0.7);
-      ctx.fillStyle = `hsl(${rr(20, 30)}, ${rr(38, 52)}%, ${rr(20, 30)}%)`;
-      ctx.fillRect(x, r * rh, len, rh);
-      for (let i = 0; i < 16; i++) {
-        const y = r * rh + Math.random() * rh;
-        ctx.strokeStyle = `rgba(0,0,0,${rr(0.05, 0.16)})`;
-        ctx.lineWidth = rr(0.6, 2);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.bezierCurveTo(x + len * 0.3, y + rr(-6, 6), x + len * 0.6, y + rr(-6, 6), x + len, y + rr(-3, 3));
-        ctx.stroke();
-      }
-      ctx.fillStyle = 'rgba(0,0,0,.5)';
-      ctx.fillRect(x, r * rh, 3, rh);
-      x += len;
-    }
-    ctx.fillStyle = 'rgba(0,0,0,.55)';
-    ctx.fillRect(0, r * rh, w, 3);
-  }
-}, [3, 3]);
+// صور حقيقية من Poly Haven (CC0): أرضية باركيه وبانوراما ليلية لمدينة شنغهاي
+const ASSETS = {
+  floorDiff: 'assets/floor/herringbone_parquet_diff.jpg',
+  floorNor: 'assets/floor/herringbone_parquet_nor_gl.jpg',
+  floorRough: 'assets/floor/herringbone_parquet_rough.jpg',
+  outside: 'assets/outside/shanghai_bund_night.jpg',
+};
+const T = {};
+function loadAssets() {
+  const loader = new THREE.TextureLoader();
+  return Promise.all(Object.entries(ASSETS).map(([key, url]) => loader.loadAsync(url).then(tex => {
+    tex.anisotropy = maxAniso;
+    if (key === 'floorDiff' || key === 'outside') tex.colorSpace = THREE.SRGBColorSpace;
+    if (key.startsWith('floor')) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(ROOM.w / 1.6, ROOM.d / 1.6); }
+    T[key] = tex;
+  }).catch(() => console.warn('تعذّر تحميل', url))));
+}
+
 
 const wallTex = canvasTexture(512, 512, (ctx, w, h) => {
   ctx.fillStyle = '#26352a';
@@ -295,22 +290,6 @@ const rugTex = canvasTexture(1024, 680, (ctx, w, h) => {
   ctx.putImageData(img, 0, 0);
 });
 
-const skyTex = canvasTexture(512, 512, (ctx, w, h) => {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, '#0b1430'); g.addColorStop(0.7, '#1f2f5a'); g.addColorStop(1, '#3b3f63');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-  for (let i = 0; i < 160; i++) {
-    ctx.fillStyle = `rgba(255,255,240,${rr(0.3, 1)})`;
-    ctx.beginPath(); ctx.arc(Math.random() * w, Math.random() * h * 0.75, rr(0.4, 1.6), 0, Math.PI * 2); ctx.fill();
-  }
-  const moon = ctx.createRadialGradient(360, 130, 10, 360, 130, 90);
-  moon.addColorStop(0, 'rgba(255,250,225,1)'); moon.addColorStop(0.35, 'rgba(255,248,215,.95)'); moon.addColorStop(0.4, 'rgba(255,248,215,.25)'); moon.addColorStop(1, 'rgba(255,248,215,0)');
-  ctx.fillStyle = moon; ctx.beginPath(); ctx.arc(360, 130, 90, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#0a0f1f';
-  ctx.beginPath(); ctx.moveTo(0, h);
-  for (let x = 0; x <= w; x += 16) ctx.lineTo(x, h - 70 - Math.sin(x * 0.03) * 20 - Math.random() * 40);
-  ctx.lineTo(w, h); ctx.fill();
-});
 
 const M = {
   wood: new THREE.MeshStandardMaterial({ map: caseWoodTex, roughness: 0.55, metalness: 0.05 }),
@@ -345,7 +324,16 @@ function cyl(rt, rb, h, mat, x = 0, y = 0, z = 0, parent = scene, seg = 24) {
 // ---------- الغرفة ----------
 function buildRoom() {
   const { w, d, h } = ROOM;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.55 }));
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: T.floorDiff ? 0xbfae9c : 0x5a3a22,
+    map: T.floorDiff || null,
+    normalMap: T.floorNor || null,
+    normalScale: new THREE.Vector2(1.2, 1.2),
+    roughnessMap: T.floorRough || null,
+    roughness: 0.85,
+  });
+  M.floor = floorMat;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
@@ -368,7 +356,21 @@ function buildRoom() {
     mat.map = wallTex.clone();
     mat.map.repeat.set(wl.len / 2, h / 2);
     mat.map.needsUpdate = true;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(wl.len, h), mat);
+    let geo;
+    if (wl.rot === 0) {
+      // الجدار الخلفي مع فتحة حقيقية للنافذة
+      const shape = new THREE.Shape();
+      shape.moveTo(-wl.len / 2, -h / 2); shape.lineTo(wl.len / 2, -h / 2); shape.lineTo(wl.len / 2, h / 2); shape.lineTo(-wl.len / 2, h / 2); shape.closePath();
+      const hole = new THREE.Path();
+      hole.moveTo(-WIN.w / 2, WIN.y - WIN.h / 2 - h / 2); hole.lineTo(-WIN.w / 2, WIN.y + WIN.h / 2 - h / 2);
+      hole.lineTo(WIN.w / 2, WIN.y + WIN.h / 2 - h / 2); hole.lineTo(WIN.w / 2, WIN.y - WIN.h / 2 - h / 2); hole.closePath();
+      shape.holes.push(hole);
+      geo = new THREE.ShapeGeometry(shape);
+      mat.map.repeat.set(0.5, 0.5);
+    } else {
+      geo = new THREE.PlaneGeometry(wl.len, h);
+    }
+    const m = new THREE.Mesh(geo, mat);
     m.position.set(...wl.pos);
     m.rotation.y = wl.rot;
     m.receiveShadow = true;
@@ -383,18 +385,44 @@ function buildRoom() {
 
   // النافذة على الجدار الخلفي
   const win = new THREE.Group();
-  win.position.set(0, 2.15, -d / 2 + 0.01);
+  win.position.set(0, WIN.y, -d / 2 + 0.01);
   scene.add(win);
-  const sky = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.9), new THREE.MeshBasicMaterial({ map: skyTex }));
-  sky.position.z = 0.005;
-  win.add(sky);
-  box(1.36, 0.08, 0.1, M.darkWood, 0, 0.99, 0.05, win);
-  box(1.36, 0.08, 0.1, M.darkWood, 0, -0.99, 0.05, win);
-  box(0.08, 2.06, 0.1, M.darkWood, -0.64, 0, 0.05, win);
-  box(0.08, 2.06, 0.1, M.darkWood, 0.64, 0, 0.05, win);
-  box(0.04, 1.9, 0.05, M.darkWood, 0, 0, 0.03, win, false);
-  box(1.2, 0.04, 0.05, M.darkWood, 0, 0.3, 0.03, win, false);
-  box(1.5, 0.06, 0.24, M.darkWood, 0, -1.04, 0.12, win);
+  // سماكة الجدار حول الفتحة
+  const reveal = new THREE.MeshStandardMaterial({ color: 0x2c2a26, roughness: 0.9, side: THREE.DoubleSide });
+  const depth = 0.3;
+  for (const [pw, ph, x, y, ry, rx] of [
+    [depth, WIN.h, -WIN.w / 2, 0, Math.PI / 2, 0], [depth, WIN.h, WIN.w / 2, 0, -Math.PI / 2, 0],
+    [WIN.w, depth, 0, WIN.h / 2, 0, Math.PI / 2], [WIN.w, depth, 0, -WIN.h / 2, 0, -Math.PI / 2],
+  ]) {
+    const r = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), reveal);
+    r.position.set(x, y, -depth / 2 - 0.01);
+    r.rotation.set(rx, ry, 0);
+    r.receiveShadow = true;
+    win.add(r);
+  }
+  // زجاج شفاف بانعكاس خفيف
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(WIN.w, WIN.h), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0, transparent: true, opacity: 0.12, depthWrite: false }));
+  glass.position.z = -0.12;
+  win.add(glass);
+  M.glass = glass.material;
+  // المنظر الخارجي: بانوراما ليلية حقيقية حول الغرفة، تُرى عبر النافذة بعمق واقعي
+  if (T.outside) {
+    const outside = new THREE.Mesh(new THREE.SphereGeometry(30, 64, 32), new THREE.MeshBasicMaterial({ map: T.outside, side: THREE.BackSide, toneMapped: false }));
+    outside.scale.x = -1;
+    outside.rotation.y = OUTSIDE_ROT;
+    outside.position.set(0, 1.4, -d / 2);
+    scene.add(outside);
+  }
+  box(WIN.w + 0.16, 0.08, 0.1, M.darkWood, 0, WIN.h / 2 + 0.04, 0.05, win);
+  box(WIN.w + 0.16, 0.08, 0.1, M.darkWood, 0, -WIN.h / 2 - 0.04, 0.05, win);
+  box(0.08, WIN.h + 0.16, 0.1, M.darkWood, -WIN.w / 2 - 0.04, 0, 0.05, win);
+  box(0.08, WIN.h + 0.16, 0.1, M.darkWood, WIN.w / 2 + 0.04, 0, 0.05, win);
+  // إطار النافذة الداخلي مع القضبان
+  box(0.04, WIN.h, 0.05, M.darkWood, 0, 0, -0.12, win, false);
+  box(WIN.w, 0.04, 0.05, M.darkWood, 0, 0.3, -0.12, win, false);
+  box(WIN.w, 0.05, 0.06, M.darkWood, 0, -WIN.h / 2 + 0.025, -0.12, win, false);
+  box(WIN.w, 0.05, 0.06, M.darkWood, 0, WIN.h / 2 - 0.025, -0.12, win, false);
+  box(WIN.w + 0.3, 0.06, 0.26, M.darkWood, 0, -WIN.h / 2 - 0.08, 0.12, win);
   // ستائر بطيّات
   for (const side of [-1, 1]) {
     const geo = new THREE.PlaneGeometry(0.4, 2.8, 40, 1);
@@ -1237,6 +1265,8 @@ function buildCarBed() {
   cubeCam.update(renderer, scene);
   car.visible = true;
   for (const m of reflective) { m.envMap = cubeRT.texture; m.envMapIntensity = 1.2; m.needsUpdate = true; }
+  // انعكاس خفيف للغرفة على الباركيه اللامع
+  M.floor.envMap = cubeRT.texture; M.floor.envMapIntensity = 0.25; M.floor.needsUpdate = true;
 
   return { rainLight };
 }
@@ -1572,6 +1602,7 @@ async function init() {
     ]);
   } catch { /* نكمل بخط احتياطي */ }
 
+  await loadAssets();
   buildRoom();
   buildLights();
   buildChandelier();
