@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>غرفة تشرين</title>
+<title>هسيس تشرين — عالمك الصغير</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/world/world.css">
 <style>
   :root {
     --bg: #120c08;
@@ -105,9 +106,9 @@
 <body>
 <canvas id="scene"></canvas>
 
-<div id="loader"><div><h1>غرفة تشرين</h1><p>جارٍ ترتيب الكتب على الرفوف…</p></div></div>
+<div id="loader"><div><h1>هسيس تشرين</h1><p>جارٍ ترتيب الكتب على الرفوف…</p></div></div>
 
-<div id="title">غرفة تشرين</div>
+<div id="title">هسيس تشرين</div>
 <div id="hint"><b>اسحب</b> للتجوّل · <b>مرّر</b> للاقتراب · <b>اضغط على أي كتاب</b> لفتحه والكتابة فيه</div>
 <div id="tooltip"></div>
 <div id="joy" aria-label="عصا التحكم للمشي"><div id="joyKnob"></div></div>
@@ -144,6 +145,8 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { sections as worldSections } from './assets/world/sections.js';
+import './assets/world/world.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -1581,6 +1584,38 @@ function buildLights() {
   scene.add(moon, moon.target);
 }
 
+// ---------- مداخل هسيس تشرين ----------
+const cornerMarkers = [];
+let worldOverlayOpen = true;
+let companionSleeping = false;
+function buildCornerMarkers() {
+  for (const section of worldSections) {
+    const texture = canvasTexture(640, 150, (ctx, w, h) => {
+      ctx.fillStyle = 'rgba(23,18,14,.93)';
+      ctx.beginPath(); ctx.roundRect(5, 5, w - 10, h - 10, 28); ctx.fill();
+      ctx.strokeStyle = section.color; ctx.lineWidth = 3; ctx.stroke();
+      ctx.direction = 'rtl'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = section.color; ctx.font = '500 43px Tajawal, sans-serif';
+      ctx.fillText(section.name + '  ' + section.icon, w / 2, h / 2, w - 35);
+    });
+    const marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: true, transparent: true }));
+    marker.position.set(...section.pos); marker.scale.set(1.08, .253, 1);
+    marker.userData.sectionId = section.id;
+    cornerMarkers.push(marker); scene.add(marker);
+  }
+}
+window.addEventListener('tishreen:overlay', e => {
+  worldOverlayOpen = e.detail.open;
+  controls.enabled = !worldOverlayOpen && !reader.isOpen;
+  if (worldOverlayOpen) setHover(null);
+});
+window.addEventListener('tishreen:section', e => {
+  companionSleeping = !!e.detail.sleeping;
+  // The companion's room marker follows the active corner's colors.
+  for (const marker of cornerMarkers) marker.material.opacity = e.detail.id && marker.userData.sectionId !== e.detail.id ? .45 : 1;
+});
+function pickCorner() { return raycaster.intersectObjects(cornerMarkers, false)[0]?.object; }
+
 // ---------- التفاعل ----------
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -1615,17 +1650,30 @@ function setHover(mesh, e) {
 }
 
 canvas.addEventListener('pointermove', e => {
-  if (busy || reader.isOpen) return;
+  if (busy || reader.isOpen || worldOverlayOpen) return;
   if (e.pointerType === 'touch') return;
-  setHover(pickBook(e), e);
+  const book = pickBook(e);
+  const corner = pickCorner();
+  if (corner) {
+    setHover(null);
+    document.body.classList.add('hovering');
+    tooltip.textContent = 'افتح ' + worldSections.find(s => s.id === corner.userData.sectionId).name;
+    tooltip.style.left = e.clientX + 'px'; tooltip.style.top = e.clientY + 'px';
+    tooltip.classList.add('show');
+  } else setHover(book, e);
 });
 canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener('pointerup', e => {
-  if (!downAt || busy || reader.isOpen) return;
+  if (!downAt || busy || reader.isOpen || worldOverlayOpen) return;
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
   if (moved > 6) return;
   const mesh = pickBook(e);
+  const corner = pickCorner();
+  if (corner) {
+    window.dispatchEvent(new CustomEvent('tishreen:open', { detail: { id: corner.userData.sectionId } }));
+    return;
+  }
   // لمس الكرة يركلها بعيداً عن الكاميرا فيلحقها الثعلب
   if (fox && raycaster.intersectObject(fox.ball, false).length) {
     kickBall(tmpV.subVectors(fox.ball.position, camera.position), 4);
@@ -1791,7 +1839,7 @@ const reader = (() => {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
   addEventListener('keydown', e => {
-    if (!api.isOpen) return;
+    if (!api.isOpen || worldOverlayOpen) return;
     if (e.key === 'Escape') { e.preventDefault(); closeBook(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); flush(); }
     if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); go(1); }
@@ -1860,6 +1908,9 @@ async function init() {
   carBed = buildCarBed();
   buildRacingDecor();
   buildFox();
+  buildCornerMarkers();
+  controls.enabled = !worldOverlayOpen;
+  renderer.render(scene, camera);
 
   document.getElementById('loader').classList.add('done');
   renderer.setAnimationLoop(loop);
@@ -1869,6 +1920,7 @@ let carBed = null;
 let lastFrame = 0;
 const FRAME_MS = LOW ? 1000 / 40 : 0;
 function loop(now) {
+  if (worldOverlayOpen) { lastFrame = now; return; }
   if (now - lastFrame < FRAME_MS) return;
   const dt = Math.min(0.05, (now - (lastFrame || now)) / 1000);
   lastFrame = now;
@@ -1889,7 +1941,7 @@ function loop(now) {
   const f = 0.75 + Math.sin(now * 0.011) * 0.08 + Math.sin(now * 0.037) * 0.06 + Math.random() * 0.05;
   candleLight.intensity = f;
   candleFlame.scale.set(1, 0.9 + f * 0.2, 1);
-  updateFox(dt);
+  if (!companionSleeping) updateFox(dt);
   carBed.rainLight.material.emissiveIntensity = Math.floor(now / 450) % 2 ? 3 : 0.3;
 
   if (controls.enabled) {
