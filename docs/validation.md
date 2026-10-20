@@ -55,3 +55,6 @@ Matched the reference's narrow composition and sequence: cloud collage, four fea
 - Verified leather book cover, image upload, reading filters, writing CRUD, all gates, habit counter, mobile fit and refresh reset.
 - Opening fox pointer/keyboard interaction and reduced-motion checks pass.
 - Desktop and mobile screenshots inspected; generated paper and walnut desk are local WebP assets.
+
+## Scrapbook studio and MP3
+Browser checks passed for paper selection, decorative items, pointer drawing and undo, exporting JSON and importing strokes/background selection, audio playback with a generated WAV, switching player skins and playlists, mobile width and absence of JS errors. No physical pen device was available; testing used browser pointer events. Added front/back ordering controls for scraps.

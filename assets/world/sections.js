@@ -12,7 +12,7 @@ export const sections = [
   { id:'mercedes', name:'الفورمولا ون / مرسيدس', icon:'⚑', type:'collection', color:'#73c7b7', pass:'W196-1954', desc:'السيارة والسباقات والسائقون؛ ذاكرة الحلبة.', mood:'يرتدي ألوان مرسيدس', audio:'mS41bHNw1WI', pos:[4.05,1.45,1.9] },
   { id:'milan', name:'AC Milan / كاكا', icon:'◉', type:'collection', color:'#dc8584', pass:'11’22', desc:'قميص أحمر وأسود، وصوت سان سيرو.', mood:'يرتدي ألوان ميلان', audio:'D5Twl6lyimk', pos:[3.8,2.7,.3] },
   { id:'journal', name:'الجورنال', icon:'▧', type:'journal', color:'#dbb493', pass:'', desc:'صفحات حرة؛ صور وملصقات وقصاصات.', mood:'يجمع أوراق الخريف', pos:[.2,.95,.6] },
-  { id:'2052', name:'20:52 / الإسبريسو', icon:'☕', type:'writing', color:'#c6a08a', pass:'想念', desc:'مذكرات عند حافة المساء وفنجان قهوة.', mood:'يستريح إلى جوارك', audio:'ELn0tyPqlGs', pos:[2.8,1.3,-3.9] },
+  { id:'2052', name:'20:52', icon:'☕', type:'writing', color:'#c6a08a', pass:'想念', desc:'مذكرات عند حافة المساء وفنجان قهوة.', mood:'يستريح إلى جوارك', audio:'ELn0tyPqlGs', pos:[2.8,1.3,-3.9] },
   { id:'library', name:'مكتبتي', icon:'▥', type:'books', color:'#c5cba4', pass:'حبر', desc:'ما قرأته، وما تنتظر قراءته؛ ملاحظات واقتباسات.', mood:'اختار كتابًا جديدًا', pos:[2.5,2.8,-3.9] },
 ];
 export const brief = { title:'هسيس تشرين', dedication:'', source:'مخطط صاحب المشروع، خمس صفحات، 20 أكتوبر 2026', openingMusic:'yc6Jlu0cNmk', mainPassword:'في الليلة السابعة بعد انفجار رأسي', policy:'تنفيذ تدريجي، ثعلب مرافق يتغير حسب الركن، أصوات خاصة، محتوى قابل للإضافة، ومكتبة وجورنال ومهام وذكريات.' };

@@ -1,3 +1,5 @@
+import { renderMusic } from './music-room.js';
+import { mountStudio, paperStyle, drawPage } from './journal-studio.js';
 import { sections, intro, brief } from './sections.js';
 
 // This prototype deliberately keeps new content in memory only.
@@ -121,13 +123,14 @@ function renderLedger() {
   $('#ledger-latest').innerHTML=all.length?all.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,3).map(e=>`<p><span>${escape(e.title)}</span><small>${escape(e.date)}</small></p>`).join(''):'<p>لم تترك أثرًا بعد… البداية لك.</p>';
 }
 function openSection(id,bypass=false) {
-  const s=sections.find(s=>s.id===id);if(!s)return;
+  const s=id==='music'?{id:'music',name:'MP3 · موسيقى تشرين',type:'music',icon:'♫',color:'#b08864',desc:'قوائمك، أسطواناتك، وأصوات تشبهك.',mood:'يصغي معك'}:sections.find(s=>s.id===id);if(!s)return;
   if(!bypass&&s.pass&&!state.unlocked.has(s.id)){gate(s);return;}
   state.current=s;state.selected=null;
+  $('#world-section').dataset.corner=s.id;
   $('#world-section').style.setProperty('--world-accent',s.color);
-  $('#section-eyebrow').textContent=`${String(sections.indexOf(s)+1).padStart(2,'0')} / ${s.icon} هسيس تشرين`;
+  $('#section-eyebrow').textContent=s.type==='music'?'♫ هسيس تشرين':`${String(sections.indexOf(s)+1).padStart(2,'0')} / ${s.icon} هسيس تشرين`;
   $('#section-title').textContent=s.name;$('#section-desc').textContent=s.desc;$('#fox-mood').textContent=s.mood;
-  stopAudio();renderAudio(s);renderContent();setScreen('section');emitSection(s,s.type==='tasks'&&isSleeping());
+  stopAudio();$('#section-audio').hidden=s.type==='music';renderAudio(s);renderContent();setScreen('section');emitSection(s,s.type==='tasks'&&isSleeping());
 }
 function renderAudio(s) {
   $('#section-audio').innerHTML=`<details class="world-audio"><summary>♫ ${s.audio?'صوت هذا الركن':'صوت المطر'} <span class="muted">· اختر التشغيل</span></summary><div class="world-tools">${s.audio?'<button class="wbtn" id="play-reference">تشغيل المقطع المحدد</button>':''}<label class="wbtn" style="margin:0;cursor:pointer">اختَر تسجيلًا من جهازك<input id="ambient-file" type="file" accept="audio/*" hidden></label></div><div id="audio-slot"></div></details>`;
@@ -140,6 +143,7 @@ function release(url) {if(url&&state.media.has(url)){URL.revokeObjectURL(url);st
 function empty(symbol,title,desc) {return `<div class="empty-state"><div class="symbol">${symbol}</div><h3>${title}</h3><p class="muted">${desc}</p></div>`;}
 function renderContent() {
   const s=state.current;
+  if(s.type==='music'){renderMusic($('#section-content'));return}
   if(s.type==='journal'){renderJournal();return}
   const noun=s.type==='books'?'كتاب':s.type==='tasks'?'مهمة أو عادة':s.type==='collection'?'ذكرى':'نص';
   $('#section-content').innerHTML=`<div class="world-tools"><button class="wbtn primary" id="new-entry">+ أضف ${noun}</button><span class="spacer"></span>${s.type==='books'?'<select id="book-filter" aria-label="حالة القراءة" style="max-width:190px"><option value="">كل الكتب</option><option>أريد قراءته</option><option>أقرأه الآن</option><option>قرأته</option></select>':''}<span class="muted" id="entry-count"></span></div><div id="entries" class="${s.type==='tasks'?'':'world-entry-grid '+(s.type==='books'?'books':s.type==='collection'?'archive-cards':'')}"></div>`;
@@ -199,6 +203,7 @@ function renderJournal() {
   $('#add-scrap').onclick=()=>scrapDialog();
   $('#journal-image').onchange=e=>{const f=e.target.files[0];if(!f||!f.type.startsWith('image/'))return;p.items.push({id:newId(),kind:'image',url:mediaUrl(f),title:f.name,x:15,y:15,width:180,rotation:0});renderBoard()};
   $('#add-sticker').onclick=()=>{p.items.push({id:newId(),kind:'text',text:'🍂',x:30,y:20,width:100,rotation:-5});renderBoard()};
+  mountStudio({state,render:renderJournal,renderBoard,toast});
   renderBoard();
 }
 function namePage(rename) {modal(rename?'اسم الصفحة':'صفحة جديدة',`<form id="page-form"><label for="page-name">اسم الصفحة</label><input id="page-name" required maxlength="80" value="${rename?escape(state.pages[state.page].name):''}"><div class="world-dialog-actions"><button class="wbtn primary">اعتمد الاسم</button></div></form>`,()=>{$('#page-form').onsubmit=e=>{e.preventDefault();const name=$('#page-name').value.trim();if(!name)return;if(rename)state.pages[state.page].name=name;else{state.pages.push({id:newId(),name,items:[]});state.page=state.pages.length-1}closeModal();renderJournal()}})}
@@ -206,9 +211,11 @@ function scrapDialog(item) {modal(item?'تعديل القصاصة':'قصاصة �
 function renderBoard() {
   const p=state.pages[state.page],board=$('#journal-board');
   const partner=state.pages[state.page%2===0?state.page+1:state.page-1];
-  $('#journal-partner').innerHTML=partner?.items.length?partner.items.map(i=>`<div class="journal-item partner-item" style="left:${i.x}%;top:${i.y}%;width:${i.width}px;transform:rotate(${i.rotation}deg)">${i.kind==='image'?`<img src="${i.url}" alt="${escape(i.title)}">`:escape(i.text)}</div>`).join(''):'<p class="blank-page-note">هنا، تتّسع الحكاية…</p>';
+  $('#journal-partner').innerHTML=partner?.items.length?partner.items.map(i=>`<div class="journal-item partner-item material-${i.style||'paper'}" style="left:${i.x}%;top:${i.y}%;width:${i.width}px;transform:rotate(${i.rotation}deg)">${i.kind==='image'?`<img src="${i.url}" alt="${escape(i.title)}">`:escape(i.text)}</div>`).join(''):'<p class="blank-page-note">هنا، تتّسع الحكاية…</p>';
 
-  board.innerHTML=p.items.length?p.items.map(i=>`<div class="journal-item ${i.id===state.selected?'selected':''}" tabindex="0" role="button" aria-label="قصاصة؛ استخدم الأسهم للتحريك" data-item="${i.id}" style="left:${i.x}%;top:${i.y}%;width:${i.width}px;transform:rotate(${i.rotation}deg)">${i.kind==='image'?`<img src="${i.url}" alt="${escape(i.title)}">`:escape(i.text)}</div>`).join(''):empty('❦','صفحة بيضاء، واحتمالات كثيرة','أضف صورة أو كلمة أو ورقة خريف.');
+  board.innerHTML=p.items.length?p.items.map(i=>`<div class="journal-item material-${i.style||'paper'} ${i.id===state.selected?'selected':''}" tabindex="0" role="button" aria-label="قصاصة؛ استخدم الأسهم للتحريك" data-item="${i.id}" style="left:${i.x}%;top:${i.y}%;width:${i.width}px;transform:rotate(${i.rotation}deg)">${i.kind==='image'?`<img src="${i.url}" alt="${escape(i.title)}">`:escape(i.text)}</div>`).join(''):empty('❦','صفحة بيضاء، واحتمالات كثيرة','أضف صورة أو كلمة أو ورقة خريف.');
+  paperStyle(board.closest('.journal-leaf'),p);paperStyle($('#journal-partner').closest('.journal-leaf'),partner);
+  drawPage(board,p,true);drawPage($('#journal-partner'),partner);
   for(const el of board.querySelectorAll('[data-item]')){
     const i=p.items.find(i=>i.id===el.dataset.item);let drag=null;
     el.onpointerdown=e=>{state.selected=i.id;board.querySelectorAll('.selected').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');renderJournalControls();drag={x:e.clientX,y:e.clientY,left:i.x,top:i.y};el.setPointerCapture(e.pointerId);};
@@ -220,10 +227,12 @@ function renderBoard() {
 }
 function renderJournalControls() {
   const p=state.pages[state.page],i=p.items.find(i=>i.id===state.selected),controls=$('#journal-controls');if(!i){controls.innerHTML='<span class="muted">الصفحة مؤقتة لهذه الزيارة.</span>';return}
-  controls.innerHTML=`<label for="scrap-size" style="margin:0">الحجم</label><input id="scrap-size" type="range" min="90" max="300" value="${i.width}"><label for="scrap-rotation" style="margin:0">الميل</label><input id="scrap-rotation" type="range" min="-20" max="20" value="${i.rotation}">${i.kind==='text'?'<button class="wbtn" id="edit-scrap">تعديل النص</button>':''}<button class="wbtn quiet" id="remove-scrap">حذف القصاصة</button>`;
+  controls.innerHTML=`<label for="scrap-size" style="margin:0">الحجم</label><input id="scrap-size" type="range" min="90" max="300" value="${i.width}"><label for="scrap-rotation" style="margin:0">الميل</label><input id="scrap-rotation" type="range" min="-20" max="20" value="${i.rotation}">${i.kind==='text'?'<button class="wbtn" id="edit-scrap">تعديل النص</button>':''}<button class="wbtn" id="raise-scrap">للأمام</button><button class="wbtn" id="lower-scrap">للخلف</button><button class="wbtn quiet" id="remove-scrap">حذف القصاصة</button>`;
   const apply=()=>{const el=$(`[data-item="${i.id}"]`);el.style.width=i.width+'px';el.style.transform=`rotate(${i.rotation}deg)`};
   $('#scrap-size').oninput=e=>{i.width=Number(e.target.value);apply()};$('#scrap-rotation').oninput=e=>{i.rotation=Number(e.target.value);apply()};
   if($('#edit-scrap'))$('#edit-scrap').onclick=()=>scrapDialog(i);
+  $('#raise-scrap').onclick=()=>{p.items=p.items.filter(x=>x!==i);p.items.push(i);renderBoard()};
+  $('#lower-scrap').onclick=()=>{p.items=p.items.filter(x=>x!==i);p.items.unshift(i);renderBoard()};
   $('#remove-scrap').onclick=()=>{release(i.url);p.items=p.items.filter(x=>x.id!==i.id);state.selected=null;renderBoard()};
 }
 
@@ -264,4 +273,5 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Escape') {if(!shell.hidden){e.preventDefault();closeModal()}else if(state.screen==='section'){renderMap();setScreen('map')}else if(state.screen==='map'){setScreen('room')}return}
   if(e.key==='Tab'&&active){const focusables=[...active.querySelectorAll('button,input,textarea,select,a[href],summary,[tabindex="0"]')].filter(x=>!x.disabled&&x.offsetParent!==null);const first=focusables[0],last=focusables.at(-1);if(e.shiftKey&&(document.activeElement===first||!active.contains(document.activeElement))){e.preventDefault();last?.focus()}else if(!e.shiftKey&&(document.activeElement===last||!active.contains(document.activeElement))){e.preventDefault();first?.focus()}}
 });
+const musicButton=document.createElement('button');musicButton.className='music-entry';musicButton.textContent='♫ MP3';musicButton.onclick=()=>openSection('music');$('.paper-navigation').append(musicButton);
 renderMap();setScreen('intro');
