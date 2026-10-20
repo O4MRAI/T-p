@@ -242,8 +242,14 @@ const ASSETS = LOW ? {
 };
 // نموذج فيراري F2008 الجاهز
 const CAR_MODEL = { url: LOW ? 'assets/models/ferrari_f2008_mobile.glb' : 'assets/models/ferrari_f2008.glb', scale: 0.88, center: -0.36 };
-// ثعلب متحرك من نماذج Khronos التجريبية: النموذج CC0 من PixelMannen، والتحريك CC-BY 4.0 من tomkranis
-const FOX = { url: 'assets/models/fox.glb', length: 0.75 };
+// ثعلب واقعي متحرك: "Animated Fox 3D Model" من AnimalMesh 3D على Sketchfab (CC-BY 4.0)
+const FOX = { url: LOW ? 'assets/models/fox_mobile.glb' : 'assets/models/fox.glb', length: 0.95 };
+const FOX_IDLES = ['A1_Stand_Idle_02', 'A3_Stand_Idle_01', 'A2_Stand_Eating_01', 'A4_Stand_Breathing_01'];
+// الاستلقاء والجلوس: انتقال للأسفل، حلقة راحة، انتقال للأعلى
+const FOX_RESTS = [
+  ['Trans_Stand_to_Lying', 'Lying_Idle_01', 'Trans_Lying_to_Stand'],
+  ['Trans_Stand_to_Sitting', 'Sitting_Idle_01', 'Trans_Sitting_to_Stand'],
+];
 const T = {};
 // يُقرأ الملف كبيانات خام ثم يُحلَّل، ويدعم نسخة base64 النصية للأماكن التي لا تقدّم ملفات .glb
 async function loadGLB(url) {
@@ -1394,7 +1400,10 @@ let fox = null;
 function buildFox() {
   if (!T.fox) return;
   const root = T.fox.scene;
-  const box3 = new THREE.Box3().setFromObject(root);
+  // حجم الجسم المكسو بالعظام يُقاس من العظام نفسها، لا من الشكل قبل التحريك
+  root.updateMatrixWorld(true);
+  const box3 = new THREE.Box3(), bonePos = new THREE.Vector3();
+  root.traverse(o => { if (o.isBone) box3.expandByPoint(o.getWorldPosition(bonePos)); });
   const S = FOX.length / (box3.max.z - box3.min.z);
   root.scale.setScalar(S);
   root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
@@ -1415,17 +1424,29 @@ function buildFox() {
   ball.position.set(0.4, PLAY.y + R, -0.6);
   scene.add(ball);
 
-  fox = { root, mixer, actions, ball, R, vel: new THREE.Vector3(), state: 'survey', timer: 1.5, current: null, wander: new THREE.Vector3() };
-  playFox('Survey');
+  fox = { root, mixer, actions, ball, R, vel: new THREE.Vector3(), state: 'idle', timer: 1.5, current: null, wander: new THREE.Vector3(), rest: null };
+  playFox(FOX_IDLES[0]);
 }
 
-function playFox(name) {
-  if (!fox || fox.current === name) return;
+// يشغّل حركة بدمج ناعم، ويعيد مدتها حتى تُستخدم للانتقالات التي تعمل مرة واحدة
+function playFox(name, once = false) {
   const next = fox.actions[name];
-  if (!next) return;
-  next.reset().fadeIn(0.25).play();
-  if (fox.current) fox.actions[fox.current].fadeOut(0.25);
-  fox.current = name;
+  if (!next) return 0;
+  if (fox.current !== name) {
+    next.reset();
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    next.clampWhenFinished = once;
+    next.fadeIn(0.3).play();
+    if (fox.current) fox.actions[fox.current].fadeOut(0.3);
+    fox.current = name;
+  }
+  return next.getClip().duration;
+}
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function foxIdle(min, max) {
+  fox.state = 'idle';
+  fox.timer = THREE.MathUtils.randFloat(min, max);
+  playFox(pick(FOX_IDLES));
 }
 
 function kickBall(dir, power) {
@@ -1454,23 +1475,36 @@ function updateFox(dt) {
     vel.set(0, 0, 0);
   }
 
-  // سلوك الثعلب
+  // سلوك الثعلب: يتلفّت أو يأكل، يتمشى، يستلقي أو يجلس، ويطارد الكرة
   fox.timer -= dt;
-  let target = null, speed = 0;
-  if (fox.state === 'survey') {
-    playFox('Survey');
-    if (fox.timer <= 0) {
-      if (Math.random() < 0.3) {
-        fox.state = 'wander';
-        fox.wander.set(THREE.MathUtils.randFloat(PLAY.x0, PLAY.x1), 0, THREE.MathUtils.randFloat(PLAY.z0, PLAY.z1));
-      } else {
-        fox.state = 'chase';
-      }
+  let target = null, speed = 0, gait = 'WalkSlow';
+  if (fox.state === 'idle' && fox.timer <= 0) {
+    const r = Math.random();
+    if (r < 0.25) {
+      fox.state = 'wander';
+      fox.wander.set(THREE.MathUtils.randFloat(PLAY.x0, PLAY.x1), 0, THREE.MathUtils.randFloat(PLAY.z0, PLAY.z1));
+    } else if (r < 0.4) {
+      fox.rest = pick(FOX_RESTS);
+      fox.state = 'down';
+      fox.timer = playFox(fox.rest[0], true);
+    } else {
+      fox.state = 'chase';
     }
+  } else if (fox.state === 'down' && fox.timer <= 0) {
+    fox.state = 'rest';
+    fox.timer = THREE.MathUtils.randFloat(4, 8);
+    playFox(fox.rest[1]);
+  } else if (fox.state === 'rest' && fox.timer <= 0) {
+    fox.state = 'up';
+    fox.timer = playFox(fox.rest[2], true);
+  } else if (fox.state === 'up' && fox.timer <= 0) {
+    foxIdle(0.8, 1.6);
   } else if (fox.state === 'wander') {
-    target = fox.wander; speed = 0.55;
+    target = fox.wander; speed = 0.42; gait = 'WalkSlow';
   } else if (fox.state === 'chase') {
-    target = ball.position; speed = 1.7;
+    target = ball.position;
+    const far = root.position.distanceTo(ball.position) > 1.4;
+    speed = far ? 2.2 : 1.0; gait = far ? 'Run' : 'Trot';
   }
 
   if (target) {
@@ -1480,16 +1514,19 @@ function updateFox(dt) {
     let diff = yaw - root.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     root.rotation.y += diff * Math.min(1, dt * 6);
-    playFox(speed > 1 ? 'Run' : 'Walk');
+    playFox(gait);
     if (Math.abs(diff) < 1.2) root.position.addScaledVector(tmpV.normalize(), Math.min(dist, speed * dt * (1 - Math.abs(diff) / 1.6)));
 
-    if (fox.state === 'chase' && dist < 0.32) {
+    // الكرة تُدفع حين يصلها الخطم وليس مركز الجسم
+    const muzzleX = root.position.x + Math.sin(root.rotation.y) * FOX.length * 0.42;
+    const muzzleZ = root.position.z + Math.cos(root.rotation.y) * FOX.length * 0.42;
+    if (fox.state === 'chase' && Math.hypot(ball.position.x - muzzleX, ball.position.z - muzzleZ) < 0.14) {
       tmpV.set(ball.position.x - root.position.x, 0, ball.position.z - root.position.z).normalize();
       tmpV.x += THREE.MathUtils.randFloatSpread(0.8); tmpV.z += THREE.MathUtils.randFloatSpread(0.8);
       kickBall(tmpV, THREE.MathUtils.randFloat(2.2, 3.6));
-      fox.state = 'survey'; fox.timer = THREE.MathUtils.randFloat(1.2, 2.8);
+      foxIdle(1.2, 3);
     } else if (fox.state === 'wander' && dist < 0.1) {
-      fox.state = 'survey'; fox.timer = THREE.MathUtils.randFloat(1.5, 3);
+      foxIdle(1.5, 4);
     }
   }
   root.position.x = THREE.MathUtils.clamp(root.position.x, PLAY.x0, PLAY.x1);
@@ -1562,7 +1599,7 @@ canvas.addEventListener('pointerup', e => {
   // لمس الكرة يركلها بعيداً عن الكاميرا فيلحقها الثعلب
   if (fox && raycaster.intersectObject(fox.ball, false).length) {
     kickBall(tmpV.subVectors(fox.ball.position, camera.position), 4);
-    fox.state = 'chase';
+    if (fox.state === 'idle' || fox.state === 'wander') fox.state = 'chase';
     return;
   }
   if (mesh) openBook(mesh);
