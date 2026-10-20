@@ -84,7 +84,9 @@
 .world-paper .eyebrow,.world-paper .muted{color:#9a7b4c}
 .world-paper .dedication{font:20px/1.8 'Aref Ruqaa',serif;margin:8px 0 20px;color:#8c6b3a}
 .world-paper blockquote{margin:20px 0;font:23px/2.1 'Aref Ruqaa',serif}
-.world-symbols{font-size:22px;letter-spacing:12px;color:#a1834c}
+.opening-fox{display:block;width:min(290px,75%);height:auto;margin:4px auto 18px;filter:drop-shadow(0 12px 12px #79562d20);animation:foxWelcome 6s ease-in-out infinite}
+@keyframes foxWelcome{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media(prefers-reduced-motion:reduce){.opening-fox{animation:none}}
 .leaf-enter{display:block;min-width:85px;min-height:80px;font-size:50px!important;border:0;background:none;margin:12px auto 0;padding:0}
 .leaf-enter span{display:inline-block;animation:leafSway 5s ease-in-out infinite}
 @keyframes leafSway{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg) translateY(-7px)}}
