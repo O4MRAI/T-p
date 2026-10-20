@@ -30,5 +30,6 @@ python3 -m http.server 8000
 
 ## مصادر الصور
 - أرضية الباركيه: [Herringbone Parquet](https://polyhaven.com/a/herringbone_parquet) من Poly Haven (CC0).
+- السجادة: صورة سجادة أناضولية من القرن السابع عشر من [متحف المتروبوليتان](https://www.metmuseum.org/art/collection/search/452567) (ملكية عامة، CC0).
 - المنظر من النافذة: بانوراما [Shanghai Bund](https://polyhaven.com/a/shanghai_bund) من Poly Haven (CC0).
 - نموذج سيارة Ferrari F2008: ملف قدّمه صاحب المشروع (`assets/models/ferrari_f2008.glb`)، مُحوَّل ومضغوط من ملف Blender الأصلي.

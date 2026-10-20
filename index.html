@@ -210,24 +210,44 @@ function canvasTexture(w, h, draw, repeat) {
 }
 
 // ---------- الخامات ----------
-// صور حقيقية من Poly Haven (CC0): أرضية باركيه وبانوراما ليلية لمدينة شنغهاي
+// صور حقيقية: أرضية باركيه وبانوراما ليلية لمدينة شنغهاي من Poly Haven (CC0)،
+// وسجادة أناضولية من القرن السابع عشر من متحف المتروبوليتان (ملكية عامة)
 const ASSETS = {
   floorDiff: 'assets/floor/herringbone_parquet_diff.jpg',
   floorNor: 'assets/floor/herringbone_parquet_nor_gl.jpg',
   floorRough: 'assets/floor/herringbone_parquet_rough.jpg',
   outside: 'assets/outside/shanghai_bund_night.jpg',
+  rugColor: 'assets/rug/rug_color.webp',
+  rugNormal: 'assets/rug/rug_normal.jpg',
 };
 // نموذج فيراري F2008 الجاهز
 const CAR_MODEL = { url: 'assets/models/ferrari_f2008.glb', scale: 0.88, center: -0.36 };
 const T = {};
+// يُقرأ الملف كبيانات خام ثم يُحلَّل، ويدعم نسخة base64 النصية للأماكن التي لا تقدّم ملفات .glb
+async function loadCarModel() {
+  const res = await fetch(CAR_MODEL.url);
+  if (!res.ok) throw new Error(res.status);
+  let buffer;
+  if (CAR_MODEL.url.endsWith('.txt')) {
+    const bin = atob((await res.text()).trim());
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    buffer = bytes.buffer;
+  } else {
+    buffer = await res.arrayBuffer();
+  }
+  const base = CAR_MODEL.url.slice(0, CAR_MODEL.url.lastIndexOf('/') + 1);
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, base);
+  return gltf.scene;
+}
 function loadAssets() {
   const loader = new THREE.TextureLoader();
-  const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(CAR_MODEL.url)
-    .then(g => { T.carModel = g.scene; })
+  const gltf = loadCarModel()
+    .then(scene => { T.carModel = scene; })
     .catch(() => console.warn('تعذّر تحميل نموذج السيارة، سيُستخدم النموذج المرسوم'));
   return Promise.all([gltf, ...Object.entries(ASSETS).map(([key, url]) => loader.loadAsync(url).then(tex => {
     tex.anisotropy = maxAniso;
-    if (key === 'floorDiff' || key === 'outside') tex.colorSpace = THREE.SRGBColorSpace;
+    if (key === 'floorDiff' || key === 'outside' || key === 'rugColor') tex.colorSpace = THREE.SRGBColorSpace;
     if (key.startsWith('floor')) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(ROOM.w / 1.6, ROOM.d / 1.6); }
     T[key] = tex;
   }).catch(() => console.warn('تعذّر تحميل', url)))]);
@@ -268,34 +288,6 @@ const caseWoodTex = canvasTexture(256, 512, (ctx, w, h) => {
   }
 });
 
-const rugTex = canvasTexture(1024, 680, (ctx, w, h) => {
-  ctx.fillStyle = '#6a1c1c'; ctx.fillRect(0, 0, w, h);
-  const band = (inset, color, width) => { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.strokeRect(inset, inset, w - inset * 2, h - inset * 2); };
-  band(20, '#1d2440', 34); band(46, '#c9a052', 6); band(70, '#1d2440', 10); band(90, '#c9a052', 3);
-  ctx.fillStyle = '#c9a052';
-  for (let x = 40; x < w - 20; x += 40) {
-    for (const y of [20, h - 20]) { ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); }
-  }
-  ctx.save();
-  ctx.translate(w / 2, h / 2);
-  const diamond = (rx, ry, fill) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(0, -ry); ctx.lineTo(rx, 0); ctx.lineTo(0, ry); ctx.lineTo(-rx, 0); ctx.closePath(); ctx.fill(); };
-  diamond(300, 200, '#1d2440'); diamond(270, 178, '#8a2a24'); diamond(200, 130, '#c9a052'); diamond(180, 116, '#1d2440');
-  diamond(90, 60, '#8a2a24'); diamond(40, 26, '#e7cf94');
-  ctx.restore();
-  ctx.fillStyle = 'rgba(201,160,82,.5)';
-  for (let y = 130; y < h - 120; y += 56) {
-    for (let x = 130; x < w - 120; x += 56) {
-      const dx = (x - w / 2) / 300, dy = (y - h / 2) / 200;
-      if (Math.abs(dx) + Math.abs(dy) > 1.05) { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill(); }
-    }
-  }
-  const img = ctx.getImageData(0, 0, w, h);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const n = (Math.random() - 0.5) * 22;
-    img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n;
-  }
-  ctx.putImageData(img, 0, 0);
-});
 
 
 const M = {
@@ -443,11 +435,20 @@ function buildRoom() {
   }
   cyl(0.015, 0.015, 2.2, M.brass, 0, 3.72, -d / 2 + 0.12).rotation.z = Math.PI / 2;
 
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.8), new THREE.MeshStandardMaterial({ map: rugTex, roughness: 1 }));
-  rug.rotation.x = -Math.PI / 2;
-  rug.position.set(0, 0.006, 0.7);
-  rug.receiveShadow = true;
-  scene.add(rug);
+  // سجادة حقيقية مصوّرة: الأهداب مقصوصة بالشفافية، وتحتها طبقة بسماكة الوبر
+  const RUG = { w: 2.6, h: 2.6 / 0.738, z: 0.55 };
+  if (T.rugColor) {
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(RUG.w, RUG.h), new THREE.MeshStandardMaterial({
+      map: T.rugColor, alphaTest: 0.5, normalMap: T.rugNormal || null, normalScale: new THREE.Vector2(0.8, 0.8),
+      roughness: 1, color: 0xe6ded6, side: THREE.DoubleSide,
+    }));
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(0, 0.011, RUG.z);
+    rug.receiveShadow = true;
+    scene.add(rug);
+    const pile = box(RUG.w * 0.985, 0.01, RUG.h * 0.935, new THREE.MeshStandardMaterial({ color: 0x7a2e22, roughness: 1 }), 0, 0.005, RUG.z - RUG.h * 0.0125, scene, false);
+    pile.castShadow = false;
+  }
 }
 
 // ---------- الأثاث ----------
