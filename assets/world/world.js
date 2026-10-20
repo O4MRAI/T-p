@@ -16,7 +16,7 @@ const root = document.createElement('div');
 root.id='world-ui';
 root.innerHTML = `
 <div id="world-intro" class="world-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title">
-  <article class="world-paper"><span class="wax-seal" aria-hidden="true">تشرين</span><div class="eyebrow">ورقةٌ عند عتبة العالم</div><h1 id="intro-title">هسيس تشرين</h1><button class="fox-play" id="fox-play" aria-label="داعب الثعلب"><span class="fox-reaction" aria-hidden="true">♥</span><img class="opening-fox" src="assets/world/opening-fox.webp" width="720" height="480" alt="ثعلب صغير يستريح عند عتبة هسيس تشرين" fetchpriority="high"></button><blockquote>${intro}</blockquote><button class="leaf-enter" id="enter-world" aria-label="ورقة الخريف؛ ادخل إلى العالم"><span aria-hidden="true">🍂</span></button><p class="muted">اتبع الورقة… إلى الداخل</p><button class="wbtn quiet" id="opening-music">♫ موسيقى البداية</button><div id="intro-audio"></div></article>
+  <article class="world-paper"><span class="wax-seal" aria-hidden="true">تشرين</span><div class="eyebrow">ورقةٌ عند عتبة العالم</div><h1 id="intro-title">هسيس تشرين</h1><button class="fox-play" id="fox-play" aria-label="داعب الثعلب"><span class="fox-reaction" aria-hidden="true">♥</span><img class="opening-fox" src="assets/world/opening-fox.webp" width="720" height="480" alt="ثعلب صغير يستريح عند عتبة هسيس تشرين" fetchpriority="high"></button><blockquote>${intro}</blockquote><button class="leaf-enter" id="enter-world" aria-label="ورقة الخريف؛ ادخل إلى العالم"><span aria-hidden="true">🍂</span></button><p class="muted">اتبع الورقة… إلى الداخل</p><button class="wbtn quiet" id="opening-music">♫ تشغيل الصوت إن لم يبدأ</button><div id="intro-audio"></div></article>
 </div>
 <div id="world-bar"><button id="open-map" aria-label="افتح فهرس الأركان">❦ أركان تشرين</button><button id="show-intro" aria-label="العودة إلى ورقة البداية">🍂</button></div>
 <section id="world-map" class="world-screen" hidden aria-labelledby="map-title"><div class="world-wrap">
@@ -54,9 +54,9 @@ function setScreen(name) {
   if(name==='room') {stopAudio();if(previous!=='room')returnFocus?.focus();}
   if(name==='map') {stopAudio();emitSection();$('#world-map').scrollTop=0;$('#map-title').focus({preventScroll:true});}
   if(name==='section') {$('#world-section').scrollTop=0;$('#section-title').focus({preventScroll:true});}
-  if(name==='intro') $('#enter-world').focus({preventScroll:true});
+  if(name==='intro') {if(previous!=='intro')stopAudio();$('#enter-world').focus({preventScroll:true});embed($('#intro-audio'),brief.openingMusic);}
 }
-function stopAudio() {for(const el of root.querySelectorAll('audio,video'))el.pause();for(const el of root.querySelectorAll('iframe'))el.remove();}
+function stopAudio() {for(const el of root.querySelectorAll('audio,video'))el.pause();for(const el of root.querySelectorAll('.embedded-track,iframe'))el.remove();}
 function modal(title,body,after) {
   dialogReturnFocus=document.activeElement;
   $('#world-dialog-title').textContent=title;$('#world-dialog-body').innerHTML=body;
@@ -130,14 +130,19 @@ function openSection(id,bypass=false) {
   $('#world-section').style.setProperty('--world-accent',s.color);
   $('#section-eyebrow').textContent=s.type==='music'?'♫ هسيس تشرين':`${String(sections.indexOf(s)+1).padStart(2,'0')} / ${s.icon} هسيس تشرين`;
   $('#section-title').textContent=s.name;$('#section-desc').textContent=s.desc;$('#fox-mood').textContent=s.mood;
-  stopAudio();$('#section-audio').hidden=s.type==='music';renderAudio(s);renderContent();setScreen('section');emitSection(s,s.type==='tasks'&&isSleeping());
+  stopAudio();$('#section-audio').hidden=s.type==='music';renderAudio(s);renderContent();setScreen('section');if(s.audio)embed($('#audio-slot'),s.audio);emitSection(s,s.type==='tasks'&&isSleeping());
 }
 function renderAudio(s) {
-  $('#section-audio').innerHTML=`<details class="world-audio"><summary>♫ ${s.audio==='yPSshiEsYh0'?'صوت المطر':'صوت هذا الركن'} <span class="muted">· اختر التشغيل</span></summary><div class="world-tools">${s.audio?'<button class="wbtn" id="play-reference">تشغيل المقطع المحدد</button>':''}<label class="wbtn" style="margin:0;cursor:pointer">اختَر تسجيلًا من جهازك<input id="ambient-file" type="file" accept="audio/*" hidden></label></div><div id="audio-slot"></div></details>`;
+  $('#section-audio').innerHTML=`<details class="world-audio"><summary>♫ ${s.audio==='yPSshiEsYh0'?'صوت المطر':'صوت هذا الركن'} <span class="muted">· تشغيل تلقائي</span></summary><div class="world-tools">${s.audio?'<button class="wbtn" id="play-reference">تشغيل الصوت إن لم يبدأ</button>':''}<label class="wbtn" style="margin:0;cursor:pointer">اختَر تسجيلًا من جهازك<input id="ambient-file" type="file" accept="audio/*" hidden></label></div><div id="audio-slot"></div></details>`;
   const play=$('#play-reference');if(play)play.onclick=()=>embed($('#audio-slot'),s.audio);
-  $('#ambient-file').onchange=e=>{const f=e.target.files[0];if(!f)return;const url=mediaUrl(f);$('#audio-slot').innerHTML=`<audio controls src="${url}" aria-label="صوت الركن"></audio>`;$('#audio-slot audio').play().catch(()=>{});};
+  $('#ambient-file').onchange=e=>{const f=e.target.files[0];if(!f)return;stopAudio();const url=mediaUrl(f);$('#audio-slot').innerHTML=`<audio controls src="${url}" aria-label="صوت الركن"></audio>`;$('#audio-slot audio').play().catch(()=>{});};
 }
-function embed(slot,id) {slot.innerHTML=`<iframe title="المقطع الصوتي المحدد" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;}
+function embed(slot,id) {
+  stopAudio();
+  const video=encodeURIComponent(id);
+  slot.innerHTML=`<div class="embedded-track"><div class="world-tools"><button class="wbtn" data-stop-sound>إيقاف الصوت ■</button><a class="wbtn" href="https://www.youtube.com/watch?v=${video}" target="_blank" rel="noopener noreferrer">فتح على YouTube ↗</a></div><iframe title="المقطع الصوتي المحدد" src="https://www.youtube-nocookie.com/embed/${video}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`;
+  slot.querySelector('[data-stop-sound]').onclick=()=>{slot.replaceChildren();(slot.id==='intro-audio'?$('#opening-music'):$('#play-reference'))?.focus({preventScroll:true})};
+}
 function mediaUrl(file) {const url=URL.createObjectURL(file);state.media.add(url);return url;}
 function release(url) {if(url&&state.media.has(url)){URL.revokeObjectURL(url);state.media.delete(url)}}
 function empty(symbol,title,desc) {return `<div class="empty-state"><div class="symbol">${symbol}</div><h3>${title}</h3><p class="muted">${desc}</p></div>`;}
@@ -275,3 +280,16 @@ window.addEventListener('keydown',e=>{
 });
 const musicButton=document.createElement('button');musicButton.className='music-entry';musicButton.textContent='♫ MP3';musicButton.onclick=()=>openSection('music');$('.paper-navigation').append(musicButton);
 renderMap();setScreen('intro');
+// Retry the initial autoplay attempt once a real user gesture permits sound.
+let audioGestureSeen=false;
+function unlockOpeningAudio(event){
+  if(audioGestureSeen||!event.isTrusted)return;
+  if(event.type==='keydown'&&!['Enter',' '].includes(event.key))return;
+  audioGestureSeen=true;
+  document.removeEventListener('pointerup',unlockOpeningAudio);
+  document.removeEventListener('keydown',unlockOpeningAudio);
+  if(event.target.closest('#enter-world,#opening-music,[data-stop-sound],#play-reference,a,input,select,textarea,summary'))return;
+  if(state.screen==='intro')embed($('#intro-audio'),brief.openingMusic);
+}
+document.addEventListener('pointerup',unlockOpeningAudio);
+document.addEventListener('keydown',unlockOpeningAudio);

@@ -58,3 +58,6 @@ Matched the reference's narrow composition and sequence: cloud collage, four fea
 
 ## Scrapbook studio and MP3
 Browser checks passed for paper selection, decorative items, pointer drawing and undo, exporting JSON and importing strokes/background selection, audio playback with a generated WAV, switching player skins and playlists, mobile width and absence of JS errors. No physical pen device was available; testing used browser pointer events. Added front/back ordering controls for scraps.
+
+## Automatic corner audio
+Verified opening and all 12 supplied corner IDs produce autoplay embed requests without a play-button click, with a single iframe at a time, cleanup when leaving, and manual stop. YouTube responses were stubbed in this browser check, so this does not establish remote video availability or guaranteed audible autoplay. Browser policies can require a user gesture; opening retries once on an eligible real gesture and provides a manual fallback.
