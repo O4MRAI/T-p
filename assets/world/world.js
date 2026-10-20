@@ -133,7 +133,7 @@ function openSection(id,bypass=false) {
   stopAudio();$('#section-audio').hidden=s.type==='music';renderAudio(s);renderContent();setScreen('section');emitSection(s,s.type==='tasks'&&isSleeping());
 }
 function renderAudio(s) {
-  $('#section-audio').innerHTML=`<details class="world-audio"><summary>♫ ${s.audio?'صوت هذا الركن':'صوت المطر'} <span class="muted">· اختر التشغيل</span></summary><div class="world-tools">${s.audio?'<button class="wbtn" id="play-reference">تشغيل المقطع المحدد</button>':''}<label class="wbtn" style="margin:0;cursor:pointer">اختَر تسجيلًا من جهازك<input id="ambient-file" type="file" accept="audio/*" hidden></label></div><div id="audio-slot"></div></details>`;
+  $('#section-audio').innerHTML=`<details class="world-audio"><summary>♫ ${s.audio==='yPSshiEsYh0'?'صوت المطر':'صوت هذا الركن'} <span class="muted">· اختر التشغيل</span></summary><div class="world-tools">${s.audio?'<button class="wbtn" id="play-reference">تشغيل المقطع المحدد</button>':''}<label class="wbtn" style="margin:0;cursor:pointer">اختَر تسجيلًا من جهازك<input id="ambient-file" type="file" accept="audio/*" hidden></label></div><div id="audio-slot"></div></details>`;
   const play=$('#play-reference');if(play)play.onclick=()=>embed($('#audio-slot'),s.audio);
   $('#ambient-file').onchange=e=>{const f=e.target.files[0];if(!f)return;const url=mediaUrl(f);$('#audio-slot').innerHTML=`<audio controls src="${url}" aria-label="صوت الركن"></audio>`;$('#audio-slot audio').play().catch(()=>{});};
 }
