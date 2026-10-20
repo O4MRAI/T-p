@@ -40,3 +40,7 @@ Verified in headless Chromium with the application's Three.js 0.160.0 imports se
 ## Arabic typography update
 
 Bundled Alexandria (400/500/600/700) and Aref Ruqaa (400/700) as local WOFF2 files with their OFL licenses. Verified font loading, inspected desktop and mobile renders, checked mobile horizontal overflow, and exercised the writing form with the updated typography. Google Fonts is no longer requested by the page. The final choice follows the owner's feedback on the preview: stronger geometric lettering, clearer weights and contrast, and a Ruqaa signature.
+
+## Antique reference redesign
+
+Restyled the opening, index, cards, dialogs, forms, reading entries, tasks and journal in parchment and sepia, following the owner's antique reference. Added a compressed, purpose-generated hero artwork and a lightweight local paper-grain SVG. Confirmed bundled font loading, desktop/mobile rendering, no horizontal overflow at 390 px, and writing form behavior; reran the section and content interaction checks after replacing the CSS.
