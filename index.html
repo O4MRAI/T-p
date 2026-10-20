@@ -242,13 +242,15 @@ const ASSETS = LOW ? {
 };
 // نموذج فيراري F2008 الجاهز
 const CAR_MODEL = { url: LOW ? 'assets/models/ferrari_f2008_mobile.glb' : 'assets/models/ferrari_f2008.glb', scale: 0.88, center: -0.36 };
+// ثعلب متحرك من نماذج Khronos التجريبية: النموذج CC0 من PixelMannen، والتحريك CC-BY 4.0 من tomkranis
+const FOX = { url: 'assets/models/fox.glb', length: 0.75 };
 const T = {};
 // يُقرأ الملف كبيانات خام ثم يُحلَّل، ويدعم نسخة base64 النصية للأماكن التي لا تقدّم ملفات .glb
-async function loadCarModel() {
-  const res = await fetch(CAR_MODEL.url);
+async function loadGLB(url) {
+  const res = await fetch(url);
   if (!res.ok) throw new Error(res.status);
   let buffer;
-  if (CAR_MODEL.url.endsWith('.txt')) {
+  if (url.endsWith('.txt')) {
     const bin = atob((await res.text()).trim());
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -256,16 +258,18 @@ async function loadCarModel() {
   } else {
     buffer = await res.arrayBuffer();
   }
-  const base = CAR_MODEL.url.slice(0, CAR_MODEL.url.lastIndexOf('/') + 1);
-  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, base);
-  return gltf.scene;
+  const base = url.slice(0, url.lastIndexOf('/') + 1);
+  return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, base);
 }
 function loadAssets() {
   const loader = new THREE.TextureLoader();
-  const gltf = loadCarModel()
-    .then(scene => { T.carModel = scene; })
+  const car = loadGLB(CAR_MODEL.url)
+    .then(g => { T.carModel = g.scene; })
     .catch(() => console.warn('تعذّر تحميل نموذج السيارة، سيُستخدم النموذج المرسوم'));
-  return Promise.all([gltf, ...Object.entries(ASSETS).map(([key, url]) => loader.loadAsync(url).then(tex => {
+  const fox = loadGLB(FOX.url)
+    .then(g => { T.fox = g; })
+    .catch(() => console.warn('تعذّر تحميل الثعلب'));
+  return Promise.all([car, fox, ...Object.entries(ASSETS).map(([key, url]) => loader.loadAsync(url).then(tex => {
     tex.anisotropy = maxAniso;
     if (key === 'floorDiff' || key === 'outside' || key === 'rugColor') tex.colorSpace = THREE.SRGBColorSpace;
     if (key.startsWith('floor')) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(ROOM.w / 1.6, ROOM.d / 1.6); }
@@ -1383,6 +1387,115 @@ function buildRacingDecor() {
   helmet.add(rim);
 }
 
+// ---------- ثعلب يلعب بالكرة ----------
+// يطارد الكرة ويركلها ثم يتلفّت حوله، داخل مساحة خالية من الأثاث
+const PLAY = { x0: -3.6, x1: 2.6, z0: -3.4, z1: 1.3, y: 0.012 };
+let fox = null;
+function buildFox() {
+  if (!T.fox) return;
+  const root = T.fox.scene;
+  const box3 = new THREE.Box3().setFromObject(root);
+  const S = FOX.length / (box3.max.z - box3.min.z);
+  root.scale.setScalar(S);
+  root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  root.position.set(-1.2, PLAY.y, -1.2);
+  scene.add(root);
+
+  const mixer = new THREE.AnimationMixer(root);
+  const actions = Object.fromEntries(T.fox.animations.map(c => [c.name, mixer.clipAction(c)]));
+
+  const ballTex = canvasTexture(256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#c4141a'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#f4efe6'; ctx.fillRect(0, h * 0.42, w, h * 0.16);
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(w * (i + 0.5) / 4, h * 0.22, 9, 0, Math.PI * 2); ctx.fill(); }
+  });
+  const R = 0.07;
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 20), new THREE.MeshStandardMaterial({ map: ballTex, roughness: 0.45 }));
+  ball.castShadow = true;
+  ball.position.set(0.4, PLAY.y + R, -0.6);
+  scene.add(ball);
+
+  fox = { root, mixer, actions, ball, R, vel: new THREE.Vector3(), state: 'survey', timer: 1.5, current: null, wander: new THREE.Vector3() };
+  playFox('Survey');
+}
+
+function playFox(name) {
+  if (!fox || fox.current === name) return;
+  const next = fox.actions[name];
+  if (!next) return;
+  next.reset().fadeIn(0.25).play();
+  if (fox.current) fox.actions[fox.current].fadeOut(0.25);
+  fox.current = name;
+}
+
+function kickBall(dir, power) {
+  fox.vel.set(dir.x, 0, dir.z).normalize().multiplyScalar(power);
+}
+
+const tmpV = new THREE.Vector3(), ballAxis = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+function updateFox(dt) {
+  if (!fox) return;
+  const { root, ball, vel } = fox;
+  fox.mixer.update(dt);
+
+  // الكرة تتدحرج وتتباطأ وترتد عن حدود المساحة
+  if (vel.lengthSq() > 1e-4) {
+    ball.position.addScaledVector(vel, dt);
+    for (const [axis, lo, hi] of [['x', PLAY.x0, PLAY.x1], ['z', PLAY.z0, PLAY.z1]]) {
+      if (ball.position[axis] < lo || ball.position[axis] > hi) {
+        ball.position[axis] = THREE.MathUtils.clamp(ball.position[axis], lo, hi);
+        vel[axis] *= -0.6;
+      }
+    }
+    ballAxis.crossVectors(UP, vel).normalize();
+    ball.rotateOnWorldAxis(ballAxis, vel.length() * dt / fox.R);
+    vel.multiplyScalar(Math.exp(-1.4 * dt));
+  } else {
+    vel.set(0, 0, 0);
+  }
+
+  // سلوك الثعلب
+  fox.timer -= dt;
+  let target = null, speed = 0;
+  if (fox.state === 'survey') {
+    playFox('Survey');
+    if (fox.timer <= 0) {
+      if (Math.random() < 0.3) {
+        fox.state = 'wander';
+        fox.wander.set(THREE.MathUtils.randFloat(PLAY.x0, PLAY.x1), 0, THREE.MathUtils.randFloat(PLAY.z0, PLAY.z1));
+      } else {
+        fox.state = 'chase';
+      }
+    }
+  } else if (fox.state === 'wander') {
+    target = fox.wander; speed = 0.55;
+  } else if (fox.state === 'chase') {
+    target = ball.position; speed = 1.7;
+  }
+
+  if (target) {
+    tmpV.set(target.x - root.position.x, 0, target.z - root.position.z);
+    const dist = tmpV.length();
+    const yaw = Math.atan2(tmpV.x, tmpV.z);
+    let diff = yaw - root.rotation.y;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    root.rotation.y += diff * Math.min(1, dt * 6);
+    playFox(speed > 1 ? 'Run' : 'Walk');
+    if (Math.abs(diff) < 1.2) root.position.addScaledVector(tmpV.normalize(), Math.min(dist, speed * dt * (1 - Math.abs(diff) / 1.6)));
+
+    if (fox.state === 'chase' && dist < 0.32) {
+      tmpV.set(ball.position.x - root.position.x, 0, ball.position.z - root.position.z).normalize();
+      tmpV.x += THREE.MathUtils.randFloatSpread(0.8); tmpV.z += THREE.MathUtils.randFloatSpread(0.8);
+      kickBall(tmpV, THREE.MathUtils.randFloat(2.2, 3.6));
+      fox.state = 'survey'; fox.timer = THREE.MathUtils.randFloat(1.2, 2.8);
+    } else if (fox.state === 'wander' && dist < 0.1) {
+      fox.state = 'survey'; fox.timer = THREE.MathUtils.randFloat(1.5, 3);
+    }
+  }
+  root.position.x = THREE.MathUtils.clamp(root.position.x, PLAY.x0, PLAY.x1);
+  root.position.z = THREE.MathUtils.clamp(root.position.z, PLAY.z0, PLAY.z1);
+}
+
 // ---------- الإضاءة ----------
 function buildLights() {
   scene.add(new THREE.HemisphereLight(0xffe2b8, 0x2a1a10, LOW ? 0.6 : 0.35));
@@ -1446,6 +1559,12 @@ canvas.addEventListener('pointerup', e => {
   downAt = null;
   if (moved > 6) return;
   const mesh = pickBook(e);
+  // لمس الكرة يركلها بعيداً عن الكاميرا فيلحقها الثعلب
+  if (fox && raycaster.intersectObject(fox.ball, false).length) {
+    kickBall(tmpV.subVectors(fox.ball.position, camera.position), 4);
+    fox.state = 'chase';
+    return;
+  }
   if (mesh) openBook(mesh);
 });
 canvas.addEventListener('pointerleave', () => setHover(null));
@@ -1673,6 +1792,7 @@ async function init() {
   buildTableBooks(table);
   carBed = buildCarBed();
   buildRacingDecor();
+  buildFox();
 
   document.getElementById('loader').classList.add('done');
   renderer.setAnimationLoop(loop);
@@ -1702,6 +1822,7 @@ function loop(now) {
   const f = 0.75 + Math.sin(now * 0.011) * 0.08 + Math.sin(now * 0.037) * 0.06 + Math.random() * 0.05;
   candleLight.intensity = f;
   candleFlame.scale.set(1, 0.9 + f * 0.2, 1);
+  updateFox(dt);
   carBed.rainLight.material.emissiveIntensity = Math.floor(now / 450) % 2 ? 3 : 0.3;
 
   if (controls.enabled) {
