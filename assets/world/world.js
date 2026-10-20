@@ -14,7 +14,7 @@ const root = document.createElement('div');
 root.id='world-ui';
 root.innerHTML = `
 <div id="world-intro" class="world-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title">
-  <article class="world-paper"><div class="eyebrow">ورقةٌ عند عتبة العالم</div><h1 id="intro-title">هسيس تشرين</h1><p class="dedication">${brief.dedication}</p><img class="opening-fox" src="assets/world/opening-fox.webp" width="720" height="480" alt="ثعلب صغير يستريح عند عتبة هسيس تشرين" fetchpriority="high"><blockquote>${intro}</blockquote><button class="leaf-enter" id="enter-world" aria-label="ورقة الخريف؛ ادخل إلى العالم"><span aria-hidden="true">🍂</span></button><p class="muted">اتبع الورقة… إلى الداخل</p><button class="wbtn quiet" id="opening-music">♫ موسيقى البداية</button><div id="intro-audio"></div></article>
+  <article class="world-paper"><div class="eyebrow">ورقةٌ عند عتبة العالم</div><h1 id="intro-title">هسيس تشرين</h1><p class="dedication">${brief.dedication}</p><button class="fox-play" id="fox-play" aria-label="داعب الثعلب"><span class="fox-reaction" aria-hidden="true">♥</span><img class="opening-fox" src="assets/world/opening-fox.webp" width="720" height="480" alt="ثعلب صغير يستريح عند عتبة هسيس تشرين" fetchpriority="high"></button><blockquote>${intro}</blockquote><button class="leaf-enter" id="enter-world" aria-label="ورقة الخريف؛ ادخل إلى العالم"><span aria-hidden="true">🍂</span></button><p class="muted">اتبع الورقة… إلى الداخل</p><button class="wbtn quiet" id="opening-music">♫ موسيقى البداية</button><div id="intro-audio"></div></article>
 </div>
 <div id="world-bar"><button id="open-map" aria-label="افتح فهرس الأركان">❦ أركان تشرين</button><button id="show-intro" aria-label="العودة إلى ورقة البداية">🍂</button></div>
 <section id="world-map" class="world-screen" hidden aria-labelledby="map-title"><div class="world-wrap">
@@ -223,6 +223,23 @@ function renderJournalControls() {
 }
 
 $('#enter-world').onclick=()=>gate(null);
+const foxPlay=$('#fox-play');
+let foxReactionTimer;
+function greetFox(){
+  clearTimeout(foxReactionTimer);
+  foxPlay.classList.remove('is-happy');
+  void foxPlay.offsetWidth;
+  foxPlay.classList.add('is-happy');
+  foxReactionTimer=setTimeout(()=>foxPlay.classList.remove('is-happy'),1400);
+}
+foxPlay.addEventListener('click',greetFox);
+foxPlay.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')greetFox()});
+foxPlay.addEventListener('pointermove',e=>{
+  if(e.pointerType!=='mouse')return;
+  const rect=foxPlay.getBoundingClientRect();
+  foxPlay.style.setProperty('--fox-look',`${((e.clientX-rect.left)/rect.width-.5)*9}deg`);
+});
+foxPlay.addEventListener('pointerleave',()=>foxPlay.style.setProperty('--fox-look','0deg'));
 $('#opening-music').onclick=()=>embed($('#intro-audio'),brief.openingMusic);
 $('#open-map').onclick=()=>{returnFocus=$('#open-map');renderMap();setScreen('map')};
 $('#show-intro').onclick=()=>{returnFocus=$('#show-intro');setScreen('intro')};
