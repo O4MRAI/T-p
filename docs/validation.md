@@ -36,3 +36,7 @@ Verified in headless Chromium with the application's Three.js 0.160.0 imports se
 5. Open الجورنال, add and drag a scrap, then change its size and page.
 6. Return to the room and click a labeled corner marker.
 7. Reload and confirm the newly added corner content is empty again.
+
+## Arabic typography update
+
+Bundled IBM Plex Sans Arabic (400/500/600) and Noto Naskh Arabic (400/700) as local WOFF2 files with their OFL licenses. Confirmed both font families load successfully with `document.fonts.check`, inspected desktop and mobile renders, checked mobile horizontal overflow, and exercised the writing form with the new typography. Google Fonts is no longer requested by the page.
