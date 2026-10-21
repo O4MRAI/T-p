@@ -3,8 +3,10 @@ import { renderMusic } from './music-room.js';
 import { mountStudio, paperStyle, drawPage, remember } from './journal-studio.js';
 import { sections, intro, brief } from './sections.js';
 
-// This prototype deliberately keeps new content in memory only.
-const state = { current:null, screen:'intro', unlocked:new Set(), data:Object.fromEntries(sections.map(s=>[s.id,[]])), pages:[{id:crypto.randomUUID(),name:'الصفحة الأولى',items:[]},{id:crypto.randomUUID(),name:'الصفحة الثانية',items:[]}], page:0, selected:null, media:new Set() };
+// Content stays in memory; successful gate unlocks are remembered on this device.
+const gateStorageKey='tishreen-unlocked-v1';
+function rememberedGates(){try{const ids=JSON.parse(localStorage.getItem(gateStorageKey)||'[]');return Array.isArray(ids)?ids.filter(id=>id==='main'||sections.some(s=>s.id===id)):[]}catch{return []}}
+const state = { current:null, screen:'intro', unlocked:new Set(rememberedGates()), data:Object.fromEntries(sections.map(s=>[s.id,[]])), pages:[{id:crypto.randomUUID(),name:'الصفحة الأولى',items:[]},{id:crypto.randomUUID(),name:'الصفحة الثانية',items:[]}], page:0, selected:null, media:new Set() };
 const $ = (s, root=document) => root.querySelector(s);
 const escape = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const normalize = s => s.normalize('NFKC').replace(/[\u064B-\u065F\u0670\s،,.؛;:'’‘"!?؟ـ]/g,'').toLowerCase();
@@ -34,7 +36,7 @@ root.innerHTML = `
 </div></section>
 <section id="world-section" class="world-screen" hidden aria-labelledby="section-title"><div class="world-wrap">
   <header class="world-top"><button class="wbtn quiet" id="back-map">→ كل الأركان</button><div class="world-companion"><span class="fox-avatar" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="m6 7 12 6h4L34 7l-3 20-11 8L9 27 6 7Z" stroke="currentColor" stroke-width="1.3"/><path d="m7 9 7 14 6 10 6-10 7-14M12 22l5 1m6 0 5-1m-11 5h6l-3 4-3-4Z" stroke="currentColor" stroke-width="1.3"/></svg></span><span id="fox-mood"></span></div><button class="wbtn" id="section-room">الغرفة <svg class="w-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></button></header>
-  <div class="world-section-head"><span id="section-eyebrow" class="eyebrow"></span><h1 id="section-title" tabindex="-1"></h1><p id="section-desc" class="muted"></p></div>
+  <div class="world-section-head"><div class="corner-fox-track"><button id="corner-fox" class="corner-fox" aria-label="داعب الثعلب صاحب النظارات"><img src="assets/world/fox-glasses-milan.webp" width="160" height="200" alt="ثعلب بنظارات طبية وتيشيرت ميلان الأحمر والأسود"></button></div><span id="section-eyebrow" class="eyebrow"></span><h1 id="section-title" tabindex="-1"></h1><p id="section-desc" class="muted"></p></div>
   <div id="section-audio"></div><div id="section-content"></div>
 </div></section>
 <div id="world-dialog-shell" class="world-screen world-dialog-shell" hidden><section class="world-dialog" role="dialog" aria-modal="true" aria-labelledby="world-dialog-title"><div class="world-top"><h2 id="world-dialog-title"></h2><button class="wbtn quiet" id="dialog-close" aria-label="إغلاق النافذة">✕</button></div><div id="world-dialog-body"></div></section></div>
@@ -80,11 +82,11 @@ $('#world-dialog-shell').onclick=e=>{if(e.target.id==='world-dialog-shell')close
 function gate(s) {
   const title=s ? s.name : 'باب هسيس تشرين';
   const password=s ? s.pass : brief.mainPassword;
-  const enter=()=>{closeModal();if(s){state.unlocked.add(s.id);openSection(s.id,true)}else{setScreen('map');$('#intro-audio').replaceChildren()}};
-  modal(title,`<p class="muted">${s?'لهذا الركن كلمة يعرفها صاحبه.':'في أيّ ليلة نفتح الباب؟'}</p><form id="gate-form"><label for="gate-password">كلمة الدخول</label><div class="password-row"><input id="gate-password" type="password" autocomplete="off" required><button type="button" class="wbtn" id="toggle-password" aria-label="إظهار كلمة الدخول">◉</button></div><p class="w-error" id="gate-error" role="alert"></p><div class="world-dialog-actions"><button type="button" class="wbtn quiet" id="demo-enter">دخول تجريبي سريع</button><button type="submit" class="wbtn primary">افتح الباب</button></div><details><summary class="muted">تلميح للتجربة</summary><p dir="auto">${escape(password)}</p></details></form>`,()=>{
-    $('#gate-form').onsubmit=e=>{e.preventDefault();if(normalize($('#gate-password').value)===normalize(password))enter();else $('#gate-error').textContent='الكلمة لا تطابق هذا الباب. جرّب مرة أخرى أو ادخل للتجربة.'};
+  const enter=()=>{state.unlocked.add(s?s.id:'main');let saved=true;try{localStorage.setItem(gateStorageKey,JSON.stringify([...state.unlocked]))}catch{saved=false}closeModal();if(s){openSection(s.id,true)}else{setScreen('map');$('#intro-audio').replaceChildren()}if(!saved)toast('فُتح الباب؛ المتصفح لم يسمح بحفظ الدخول بعد إغلاق الصفحة.')};
+  modal(title,`<p class="muted">أدخل كلمة الدخول مرة واحدة على هذا الجهاز.</p><form id="gate-form"><label for="gate-password">كلمة الدخول</label><div class="password-row"><input id="gate-password" type="password" autocomplete="off" required><button type="button" class="wbtn" id="toggle-password" aria-label="إظهار كلمة الدخول">◉</button></div><p class="w-error" id="gate-error" role="alert"></p><div class="world-dialog-actions"><button type="submit" class="wbtn primary">افتح الباب</button></div></form>`,()=>{
+    $('#gate-form').onsubmit=e=>{e.preventDefault();if(normalize($('#gate-password').value)===normalize(password))enter();else $('#gate-error').textContent='الكلمة لا تطابق هذا الباب. جرّب مرة أخرى.'};
     $('#toggle-password').onclick=()=>{const input=$('#gate-password');input.type=input.type==='password'?'text':'password';$('#toggle-password').setAttribute('aria-label',input.type==='text'?'إخفاء كلمة الدخول':'إظهار كلمة الدخول')};
-    $('#demo-enter').onclick=enter;
+
   });
 }
 function icon(id) {
@@ -236,7 +238,8 @@ function renderJournalControls() {
   $('#remove-scrap').onclick=()=>{remember(p);p.items=p.items.filter(x=>x.id!==i.id);state.selected=null;renderBoard()};
 }
 
-$('#enter-world').onclick=()=>gate(null);
+$('#enter-world').onclick=()=>state.unlocked.has('main')?setScreen('map'):gate(null);
+const cornerFox=$('#corner-fox');let foxHopTimer;cornerFox.onclick=()=>{clearTimeout(foxHopTimer);cornerFox.classList.remove('fox-hop');void cornerFox.offsetWidth;cornerFox.classList.add('fox-hop');foxHopTimer=setTimeout(()=>cornerFox.classList.remove('fox-hop'),1100)};
 const foxPlay=$('#fox-play');
 let foxReactionTimer;
 function greetFox(){
