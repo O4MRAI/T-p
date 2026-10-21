@@ -69,3 +69,5 @@ Song uploader: verified all 16 destinations, uploading from the opening to anoth
 
 ## Fox mascot and remembered gates
 Verified at 390px: the 20:52 mascot loads, touch interaction triggers its hop, normal motion uses a wandering animation, and the page has no horizontal overflow. Incorrect passwords do not persist unlocks. Correct main and corner passwords persist across reload; a different unopened corner still asks for its password. Hint and demo bypass are absent. No JS errors.
+
+Body animation correction: the fox uses six distinct generated poses for blinking, adjusting glasses, waving and tail movement. Browser validation confirms the frame changes while the button bounds remain fixed, the tap wave works, reduced motion stops the idle loop, and mobile width fits. Animated preview prepared separately as a GIF.
