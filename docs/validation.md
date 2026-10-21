@@ -64,3 +64,5 @@ Verified opening and all 12 supplied corner IDs produce autoplay embed requests 
 
 ## October 21 input and audio fixes
 Validated in Chromium with touch enabled at tablet dimensions: delete and undo/redo; synthetic pen input in selection mode with multiple points; whole-stroke eraser and undo; local FontFace upload; per-track artwork retained when re-entering music; actual local WAV playback and pause on navigation; mobile horizontal fit; no iframe or JS errors. Synthetic pen capture was stubbed for synthetic PointerEvents; physical Apple Pencil/Safari remains untested. Audio now uses local files only, with per-place session assignments and an explicit play fallback for browser autoplay rejection. Requested MP3 files have not been provided.
+
+Song uploader: verified all 16 destinations, uploading from the opening to another corner, retaining assignment when entering that corner, empty destination controls, deleting an assignment, mobile width and absence of JavaScript errors. Uploads remain session-only, explicitly labeled in the panel.
