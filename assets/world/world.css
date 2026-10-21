@@ -278,3 +278,13 @@
 .ambient-controls{position:fixed;bottom:12px;left:12px;z-index:85;max-width:min(350px,calc(100vw - 24px));background:#f3e8d3;color:#4c3823;border:1px solid #9c7c51;border-radius:6px;padding:10px 14px;box-shadow:0 4px 20px #21130855;font:12px/1.8 Alexandria,sans-serif;text-align:right}.ambient-controls summary{cursor:pointer;min-height:30px}.ambient-controls .ambient-name{display:block;font:23px 'Aref Ruqaa',serif;margin:6px}.ambient-controls .wbtn{font:12px Alexandria,sans-serif;min-height:40px;padding:8px;border:1px solid #ac916b;color:#4c3823;background:#eadbc0;cursor:pointer;display:inline-block}.ambient-controls p{max-width:300px;font-size:11px}.ambient-controls label{display:block;margin:8px 0}.ambient-controls input[hidden]{display:none}
 .studio-tools button[aria-pressed=true]{background:#795b38;color:#fff4dc;border-color:#684326}
 .ambient-controls select{display:block;width:100%;padding:10px;background:#fff7e7;color:#4c3823;border:1px solid #b2946b;font:12px Alexandria,sans-serif}.ambient-controls .assigned-track{overflow-wrap:anywhere;font-weight:600}.ambient-controls .song-upload{display:block;text-align:center;padding:13px;background:#7b603e;color:#fff5e2}.song-actions{display:flex;flex-wrap:wrap;gap:6px}.ambient-controls small{display:block;max-width:300px;line-height:1.8;color:#756047}.ambient-controls button:disabled{opacity:.45;cursor:default}.ambient-controls[open]{max-height:75vh;overflow:auto}
+.corner-fox-track{display:none}
+#world-section[data-corner="2052"] .world-section-head{position:relative;padding-top:165px}
+#world-section[data-corner="2052"] .world-section-head::before{display:none}
+#world-section[data-corner="2052"] .corner-fox-track{display:block;position:absolute;top:4px;right:8%;width:84%;height:150px;pointer-events:none}
+.corner-fox{position:absolute;right:0;top:0;width:112px;height:145px;padding:0;border:0;background:none;pointer-events:auto;animation:foxStroll 16s ease-in-out infinite;cursor:pointer}
+.corner-fox img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 5px 4px #160b0999);transform-origin:50% 95%;animation:foxSteps 1.4s ease-in-out infinite}
+.corner-fox:hover,.corner-fox:focus-visible{animation-play-state:paused}.corner-fox.fox-hop img{animation:foxHappy 1.1s ease-in-out}
+@keyframes foxStroll{0%,12%,100%{right:0;transform:rotate(-3deg)}45%,60%{right:calc(100% - 112px);transform:rotate(3deg)}80%{right:35%;transform:rotate(-2deg)}}
+@keyframes foxSteps{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
+@media(prefers-reduced-motion:reduce){.corner-fox,.corner-fox img,.corner-fox.fox-hop img{animation:none}.corner-fox{right:calc(50% - 56px)}}
